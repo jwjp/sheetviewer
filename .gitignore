@@ -1,0 +1,4 @@
+.sites-runtime/
+.openai/
+.DS_Store
+Thumbs.db

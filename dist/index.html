@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101c29" />
+    <meta
+      name="description"
+      content="CSV, Excel, 한셀 문서를 브라우저에서 열어 보는 오픈소스 시트 뷰어"
+    />
+    <title>시트뷰 — 스프레드시트 뷰어</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101c29'/%3E%3Crect x='12' y='13' width='40' height='38' rx='5' fill='none' stroke='%2352d6be' stroke-width='4'/%3E%3Cpath d='M12 26h40M26 26v25' stroke='%2352d6be' stroke-width='4'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./style.css" />
+    <script defer src="./vendor/xlsx.full.min.js"></script>
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand" aria-label="시트뷰">
+          <span class="brand-mark" aria-hidden="true"
+            ><span></span><span></span><span></span><span></span
+          ></span>
+          <span>시트뷰</span>
+        </div>
+        <span class="topbar-divider"></span>
+        <span class="topbar-caption">스프레드시트 뷰어</span>
+        <span class="topbar-spacer"></span>
+        <span class="privacy-note"
+          ><span class="privacy-dot"></span> 파일은 브라우저에서만
+          처리됩니다</span
+        >
+        <button
+          class="button button-primary top-open"
+          id="openButton"
+          type="button"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"
+            />
+          </svg>
+          파일 열기
+        </button>
+      </header>
+
+      <main class="main" id="main">
+        <section
+          class="empty-state"
+          id="emptyState"
+          aria-labelledby="emptyTitle"
+        >
+          <div class="empty-kicker">WORKSPACE / 01</div>
+          <div class="empty-layout">
+            <div class="empty-copy">
+              <h1 id="emptyTitle">
+                파일을 열고<br /><em>시트를 살펴보세요.</em>
+              </h1>
+              <p>
+                CSV와 Excel 문서를 빠르게 확인하세요. 파일을 선택하거나 이
+                화면에 끌어다 놓으면 됩니다.
+              </p>
+              <button
+                class="button button-primary button-large"
+                id="emptyOpenButton"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"
+                  />
+                </svg>
+                파일 선택
+              </button>
+              <div class="format-list">
+                <span>CSV</span><span>XLSX</span><span>XLS</span
+                ><span>CELL*</span>
+              </div>
+              <p class="format-footnote">
+                * 한셀 .cell 파일은 호환 가능한 형식을 읽고, 지원되지 않는 경우
+                변환 방법을 안내합니다.
+              </p>
+            </div>
+            <div
+              class="drop-card"
+              id="dropCard"
+              tabindex="0"
+              role="button"
+              aria-label="파일을 여기로 끌어다 놓거나 클릭하여 선택"
+            >
+              <div class="drop-illustration" aria-hidden="true">
+                <div class="sheet-preview">
+                  <div class="preview-head"></div>
+                  <div class="preview-row"><i></i><b></b><b></b><b></b></div>
+                  <div class="preview-row"><i></i><b></b><b></b><b></b></div>
+                  <div class="preview-row"><i></i><b></b><b></b><b></b></div>
+                  <div class="preview-row"><i></i><b></b><b></b><b></b></div>
+                </div>
+                <span class="preview-badge">.xlsx</span>
+              </div>
+              <strong>여기에 파일 놓기</strong>
+              <span>또는 클릭하여 파일 선택</span>
+            </div>
+          </div>
+          <div class="empty-bottom">
+            <span>읽기 전용</span><span>설치 없이 사용</span
+            ><span>로컬 처리</span>
+          </div>
+        </section>
+
+        <section class="viewer hidden" id="viewer" aria-label="시트 뷰어">
+          <div class="document-bar">
+            <div class="file-icon" aria-hidden="true">X</div>
+            <div class="document-identity">
+              <h1 id="fileName"></h1>
+              <div class="file-meta" id="fileMeta"></div>
+            </div>
+            <div class="document-actions">
+              <button
+                class="button button-quiet"
+                id="newFileButton"
+                type="button"
+              >
+                다른 파일 열기
+              </button>
+            </div>
+          </div>
+
+          <div class="viewer-toolbar">
+            <div class="sheet-heading">
+              <span class="toolbar-label">시트</span
+              ><strong id="sheetName"></strong>
+            </div>
+            <span class="toolbar-divider"></span>
+            <div class="toolbar-stat" id="dimensionText"></div>
+            <div class="toolbar-spacer"></div>
+            <div class="search-box">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="10.8" cy="10.8" r="6.8" />
+                <path d="m16 16 4.5 4.5" />
+              </svg>
+              <input
+                id="searchInput"
+                type="search"
+                autocomplete="off"
+                placeholder="시트에서 찾기"
+                aria-label="시트에서 찾기"
+              />
+              <span id="searchCount" aria-live="polite"></span>
+            </div>
+            <button
+              class="icon-button"
+              id="searchPrev"
+              type="button"
+              aria-label="이전 검색 결과"
+              title="이전 결과"
+            >
+              ↑
+            </button>
+            <button
+              class="icon-button"
+              id="searchNext"
+              type="button"
+              aria-label="다음 검색 결과"
+              title="다음 결과"
+            >
+              ↓
+            </button>
+          </div>
+
+          <div class="formula-bar">
+            <span class="cell-address" id="cellAddress">A1</span>
+            <span class="formula-fx">fx</span>
+            <span class="formula-value" id="cellValue"></span>
+          </div>
+
+          <div
+            class="grid-viewport"
+            id="gridViewport"
+            tabindex="0"
+            aria-label="스프레드시트 표"
+          >
+            <div class="grid-inner" id="gridInner"></div>
+          </div>
+
+          <div class="viewer-footer">
+            <div
+              class="sheet-tabs"
+              id="sheetTabs"
+              role="tablist"
+              aria-label="시트 선택"
+            ></div>
+            <div class="footer-count" id="footerCount"></div>
+          </div>
+        </section>
+      </main>
+
+      <div class="drag-overlay hidden" id="dragOverlay" aria-hidden="true">
+        <div>파일을 놓아 열기</div>
+      </div>
+      <div
+        class="toast hidden"
+        id="toast"
+        role="status"
+        aria-live="polite"
+      ></div>
+      <input
+        type="file"
+        id="fileInput"
+        accept=".csv,.tsv,.txt,.xlsx,.xls,.xlsm,.xlsb,.ods,.cell"
+        hidden
+      />
+    </div>
+  </body>
+</html>

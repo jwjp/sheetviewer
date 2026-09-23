@@ -75,6 +75,8 @@
 
   function cellText(cell) {
     if (!cell) return "";
+    if ((cell.t === "s" || cell.t === "str") && cell.v != null)
+      return String(cell.v);
     if (cell.w != null) return String(cell.w);
     if (cell.v != null) return String(cell.v);
     if (cell.f) return `=${cell.f}`;
@@ -147,6 +149,8 @@
           type: "array",
           cellFormula: true,
           cellText: true,
+          // HanCell rich text can include hs:size, which SheetJS cannot render as HTML.
+          cellHTML: false,
         });
       }
       if (!workbook.SheetNames || workbook.SheetNames.length === 0)
@@ -175,7 +179,7 @@
           ? "H"
           : "X";
       $("fileMeta").textContent =
-        `${formatBytes(file.size)} · ${workbook.SheetNames.length}개 시트 · 읽기 전용`;
+        `${formatBytes(file.size)} · ${workbook.SheetNames.length}개 시트 · ${ext === "cell" ? "셀 값 보기 (그림·서식 제외)" : "읽기 전용"}`;
       $("fileName").title = file.name;
       elements.empty.classList.add("hidden");
       elements.viewer.classList.remove("hidden");

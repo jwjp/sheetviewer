@@ -578,4 +578,20 @@
     elements.dragOverlay.classList.add("hidden");
     openFile(event.dataTransfer?.files?.[0]);
   });
+
+  async function openStartupFile() {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke) return;
+    try {
+      const name = await invoke("startup_file_name");
+      if (!name) return;
+      const bytes = await invoke("read_startup_file");
+      await openFile(new File([new Uint8Array(bytes)], name));
+    } catch (error) {
+      console.error("Failed to open the file passed to the app:", error);
+      showToast("연결된 파일을 열지 못했습니다. 파일이 있는지 확인해 주세요.", true, 7000);
+    }
+  }
+
+  openStartupFile();
 })();

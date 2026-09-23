@@ -2,6 +2,12 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.3 — Windows file associations
+
+- Registered supported spreadsheet formats as Windows **Open with** options in the installer.
+- Opened a file passed by Windows Explorer automatically when Sheetview starts.
+- Left default app selection to the user in Windows settings.
+
 ## 0.1.2 — HanCell cell fills
 
 - Read styled cells without values and display solid fills.

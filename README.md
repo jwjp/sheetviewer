@@ -8,6 +8,8 @@ Sheetview is an open-source, read-only viewer for CSV, Excel, and HanCell spread
 
 Download the Windows installer from [GitHub Releases](https://github.com/jwjp/sheetviewer/releases), or open `docs/index.html` or the [online viewer](https://jwjp.github.io/sheetviewer/) in a browser. Choose a file or drag it onto the window. The installed app works offline and requires WebView2, which is usually present on Windows 10/11. The installer can prompt for WebView2 if it is missing.
 
+The Windows installer registers Sheetview as an **Open with** option for `.csv`, `.tsv`, `.xlsx`, `.xls`, `.xlsm`, `.xlsb`, `.ods`, and `.cell`. To open a document by double-clicking it, right-click the file, choose **Open with → Choose another app → Sheetview**, and select **Always** if you want Sheetview to be the default for that extension. Installation keeps the existing default app. Opening a file this way starts a new Sheetview window.
+
 | Format | Support |
 | --- | --- |
 | `.csv`, `.tsv`, `.txt` | UTF-8, UTF-16, and Korean EUC-KR/CP949-family encodings |
@@ -27,6 +29,7 @@ We audited 95 valid `.cell` documents in a HanCell 2016 folder. Every document's
 - Scroll large sheets with virtualized rows
 - Detect common CSV delimiters and Korean text encodings
 - Use the web version without installing anything, or use the Windows app offline
+- Open a supported file from Windows Explorer with Sheetview
 
 Files are limited to 30 MB, and the viewer displays up to the first 100,000 rows and 200 columns. Formulas are not recalculated; the viewer displays values saved in the file. Charts show a placeholder instead of a rendered graph. Pattern fills, textless shapes, pivot tables, and exact source formatting and placement are not rendered. Macros are never executed.
 

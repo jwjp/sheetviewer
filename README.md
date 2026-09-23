@@ -4,7 +4,7 @@ CSV, Excel, 한셀 문서를 살펴보는 가벼운 오픈소스 웹 뷰어입�
 
 ## 사용하기
 
-브라우저에서 `dist/index.html`을 열거나, [온라인 뷰어](https://jwjp.github.io/sheetviewer/)를 이용하세요. 파일 선택 버튼을 누르거나 파일을 화면에 끌어다 놓으면 됩니다.
+브라우저에서 `docs/index.html`을 열거나, [온라인 뷰어](https://jwjp.github.io/sheetviewer/)를 이용하세요. 파일 선택 버튼을 누르거나 파일을 화면에 끌어다 놓으면 됩니다.
 
 | 형식 | 상태 |
 | --- | --- |
@@ -26,23 +26,23 @@ CSV, Excel, 한셀 문서를 살펴보는 가벼운 오픈소스 웹 뷰어입�
 
 ## 로컬 실행
 
-빌드나 의존성 설치는 필요 없습니다. `dist/index.html`을 직접 열거나 로컬 서버를 사용하세요.
+빌드나 의존성 설치는 필요 없습니다. `docs/index.html`을 직접 열거나 로컬 서버를 사용하세요.
 
 ```sh
-python -m http.server 8000 --directory dist
+python -m http.server 8000 --directory docs
 ```
 
 그다음 `http://localhost:8000`을 방문합니다.
 
 ## 배포
 
-`main` 브랜치로 푸시하면 GitHub Actions가 `dist` 폴더를 GitHub Pages에 배포합니다. 저장소의 **Settings → Pages → Build and deployment**에서 소스를 **GitHub Actions**로 설정해야 합니다.
+`main` 브랜치의 `docs` 폴더가 GitHub Pages의 게시 소스입니다. `docs` 파일을 변경하여 푸시하면 GitHub Pages가 새 버전을 게시합니다.
 
 ## 개발
 
-정적 HTML/CSS/JavaScript 프로젝트입니다. 화면은 `dist/index.html`, 스타일은 `dist/style.css`, 파일 처리와 표 렌더링은 `dist/app.js`에 있습니다. 변경 후 브라우저에서 직접 확인할 수 있습니다.
+정적 HTML/CSS/JavaScript 프로젝트입니다. 화면은 `docs/index.html`, 스타일은 `docs/style.css`, 파일 처리와 표 렌더링은 `docs/app.js`에 있습니다. 변경 후 브라우저에서 직접 확인할 수 있습니다.
 
-스프레드시트 파싱에는 [SheetJS Community Edition 0.20.3](https://docs.sheetjs.com/docs/miscellany/formats/)을 사용합니다. 배포 파일은 `dist/vendor/xlsx.full.min.js`에 포함되어 있으며 Apache-2.0 라이선스 전문은 `dist/vendor/LICENSE.sheetjs.txt`에 있습니다.
+스프레드시트 파싱에는 [SheetJS Community Edition 0.20.3](https://docs.sheetjs.com/docs/miscellany/formats/)을 사용합니다. 배포 파일은 `docs/vendor/xlsx.full.min.js`에 포함되어 있으며 Apache-2.0 라이선스 전문은 `docs/vendor/LICENSE.sheetjs.txt`에 있습니다.
 
 ## 기여
 

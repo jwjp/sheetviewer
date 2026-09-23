@@ -1,22 +1,24 @@
-# 변경 기록
+# Changelog
 
-## 0.1.2 — 한셀 셀 배경색 표시
+**English** | [한국어](CHANGELOG.ko.md)
 
-- 값이 없는 서식 셀도 읽고 단색 배경을 표시합니다.
-- 색상 셀로 만든 문서는 촘촘한 그리드로 표시합니다.
-- 한셀 2016 폴더의 정상 문서 95개를 서식 셀까지 포함해 다시 검사했습니다.
+## 0.1.2 — HanCell cell fills
 
-## 0.1.1 — 한셀 폴더 호환성 확대
+- Read styled cells without values and display solid fills.
+- Use a compact grid for documents built from colored cells.
+- Re-audited all 95 valid documents in the HanCell 2016 folder, including styled cells.
 
-- 한셀 2016 폴더의 정상 `.cell` 문서 95개를 일괄 검사하고, 셀 값이 없는 양식도 열도록 수정했습니다.
-- 시트에 삽입된 그림과 도형 텍스트를 별도 패널에서 볼 수 있습니다.
-- 실제 통합 문서가 아닌 임시 파일은 열기 오류로 구분합니다.
+## 0.1.1 — Broader HanCell previews
 
-## 0.1.0 — Windows 앱 첫 배포
+- Audited all 95 valid `.cell` documents in the HanCell 2016 folder and opened templates without cell values.
+- Added a per-sheet panel for embedded images and text in drawing objects.
+- Distinguished temporary files from valid workbooks.
 
-- Windows에 설치하여 인터넷 연결 없이 사용할 수 있는 시트뷰 앱을 추가했습니다.
-- CSV, TSV, TXT, XLSX, XLS, XLSM, XLSB, ODS와 일부 한셀 `.cell` 파일을 열 수 있습니다.
-- 파일 선택과 끌어놓기, 여러 시트 전환, 검색, 수식 표시를 지원합니다.
-- 파일은 기기에서만 처리하며 서버로 업로드하지 않습니다.
+## 0.1.0 — First Windows app
 
-한셀 `.cell` 파일의 원본 서식·배치, 차트와 수식 재계산은 지원하지 않습니다. 파일 크기 제한은 30MB입니다. 설치 파일은 현재 코드 서명이 없어 Windows SmartScreen 경고가 나타날 수 있습니다.
+- Added an installable Windows app that works offline.
+- Opened CSV, TSV, TXT, XLSX, XLS, XLSM, XLSB, ODS, and HanCell `.cell` files.
+- Added file selection, drag and drop, sheet navigation, search, and formula display.
+- Kept file processing on the user's device without uploading documents.
+
+Exact HanCell formatting and layout, rendered charts, and formula recalculation are not supported. The file size limit is 30 MB. The current installer is unsigned and may trigger a Windows SmartScreen warning.

@@ -1,6 +1,6 @@
 [package]
 name = "sheetview"
-version = "0.1.1"
+version = "0.1.2"
 description = "Offline CSV, Excel and HanCell viewer"
 authors = ["Sheetview contributors"]
 edition = "2021"

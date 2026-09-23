@@ -45,6 +45,11 @@
     actualRows: 0,
     actualCols: 0,
     cellKeys: [],
+    valueCellCount: 0,
+    filledCellCount: 0,
+    rowHeight: ROW_HEIGHT,
+    colWidth: COL_WIDTH,
+    compactGrid: false,
     selected: { r: 0, c: 0 },
     matches: [],
     matchIndex: -1,
@@ -87,6 +92,14 @@
     if (cell.v != null) return String(cell.v);
     if (cell.f) return `=${cell.f}`;
     return "";
+  }
+
+  function cellFillColor(cell) {
+    if (cell?.s?.patternType !== "solid") return null;
+    const rgb = cell.s.fgColor?.rgb;
+    return typeof rgb === "string" && /^(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(rgb)
+      ? `#${rgb.slice(-6)}`
+      : null;
   }
 
   function decodeCsv(buffer) {
@@ -163,6 +176,7 @@
           cellText: true,
           // HanCell rich text can include hs:size, which SheetJS cannot render as HTML.
           cellHTML: false,
+          cellStyles: ext === "cell",
           bookFiles: ext === "cell",
         });
       }
@@ -193,7 +207,7 @@
           ? "H"
           : "X";
       $("fileMeta").textContent =
-        `${formatBytes(file.size)} · ${workbook.SheetNames.length}개 시트 · ${ext === "cell" ? "셀 값·그림·도형 텍스트 보기 (원본 배치 제외)" : "읽기 전용"}`;
+        `${formatBytes(file.size)} · ${workbook.SheetNames.length}개 시트 · ${ext === "cell" ? "셀 값·배경색·그림·도형 텍스트 보기 (원본 배치 제외)" : "읽기 전용"}`;
       $("fileName").title = file.name;
       elements.empty.classList.add("hidden");
       elements.viewer.classList.remove("hidden");
@@ -228,12 +242,16 @@
     const name = state.workbook.SheetNames[index];
     state.sheet = state.workbook.Sheets[name];
     state.cellKeys = Object.keys(state.sheet).filter((key) => key[0] !== "!");
+    state.valueCellCount = 0;
+    state.filledCellCount = 0;
     let maxRow = -1,
       maxCol = -1;
     for (const key of state.cellKeys) {
       const address = XLSX.utils.decode_cell(key);
       maxRow = Math.max(maxRow, address.r);
       maxCol = Math.max(maxCol, address.c);
+      if (cellText(state.sheet[key])) state.valueCellCount++;
+      if (cellFillColor(state.sheet[key])) state.filledCellCount++;
     }
     if (maxRow < 0 && state.sheet["!ref"]) {
       try {
@@ -251,6 +269,13 @@
     }
     state.actualRows = maxRow + 1;
     state.actualCols = maxCol + 1;
+    const narrowColumns = (state.sheet["!cols"] || [])
+      .slice(0, 100)
+      .filter((col) => col?.wpx > 0 && col.wpx <= 32).length;
+    const compactGrid = state.filledCellCount >= 20 && narrowColumns >= 12;
+    state.compactGrid = compactGrid;
+    state.rowHeight = compactGrid ? 26 : ROW_HEIGHT;
+    state.colWidth = compactGrid ? 26 : COL_WIDTH;
     state.rowCount = Math.min(MAX_ROWS, Math.max(30, state.actualRows));
     state.colCount = Math.min(MAX_COLS, Math.max(12, state.actualCols));
     state.selected = { r: 0, c: 0 };
@@ -262,8 +287,9 @@
     $("sheetName").textContent = name;
     $("dimensionText").textContent =
       `${state.actualRows.toLocaleString()}행 × ${state.actualCols.toLocaleString()}열`;
-    $("footerCount").textContent =
-      `${state.cellKeys.length.toLocaleString()}개 셀`;
+    $("footerCount").textContent = state.filledCellCount
+      ? `${state.valueCellCount.toLocaleString()}개 값 · ${state.filledCellCount.toLocaleString()}개 색상 셀`
+      : `${state.valueCellCount.toLocaleString()}개 셀`;
     renderSheetObjects();
     renderTabs();
     renderGridStructure();
@@ -285,16 +311,20 @@
       items: [],
       plainShapes: 0,
     };
-    const hasCells = state.cellKeys.length > 0;
-    elements.sheetNotice.classList.toggle("hidden", hasCells);
-    if (!hasCells) {
-      elements.sheetNotice.textContent = objects.items.length
-        ? "이 시트에는 셀 값이 없습니다. 아래 삽입된 개체를 확인하세요."
-        : "표시할 셀 값이 없습니다. 빈 양식이나 서식만 있는 시트일 수 있습니다.";
+    const hasValues = state.valueCellCount > 0;
+    elements.sheetNotice.classList.toggle("hidden", hasValues);
+    if (!hasValues) {
+      elements.sheetNotice.textContent = state.filledCellCount
+        ? objects.items.length
+          ? "셀 값은 없습니다. 배경색은 표에, 삽입된 개체는 아래에 표시됩니다."
+          : "셀 값은 없지만 배경색으로 만든 내용이 표에 표시됩니다."
+        : objects.items.length
+          ? "이 시트에는 셀 값이 없습니다. 아래 삽입된 개체를 확인하세요."
+          : "표시할 셀 값이 없습니다. 빈 양식이나 서식만 있는 시트일 수 있습니다.";
     }
     const total = objects.items.length + objects.plainShapes;
     elements.sheetObjects.classList.toggle("hidden", total === 0);
-    elements.sheetObjects.open = !hasCells && total > 0;
+    elements.sheetObjects.open = !hasValues && total > 0;
     elements.sheetObjectsSummary.textContent =
       `삽입된 개체 ${total.toLocaleString()}개 (원본 배치와 다를 수 있음)`;
     elements.sheetObjectList.replaceChildren();
@@ -345,8 +375,11 @@
 
   function renderGridStructure() {
     elements.gridInner.replaceChildren();
-    elements.gridInner.style.width = `${ROW_LABEL_WIDTH + state.colCount * COL_WIDTH}px`;
-    elements.gridInner.style.height = `${ROW_HEIGHT + state.rowCount * ROW_HEIGHT}px`;
+    elements.gridInner.style.setProperty("--row-height", `${state.rowHeight}px`);
+    elements.gridInner.style.setProperty("--col-width", `${state.colWidth}px`);
+    elements.gridInner.style.setProperty("--cell-padding", state.compactGrid ? "2px" : "10px");
+    elements.gridInner.style.width = `${ROW_LABEL_WIDTH + state.colCount * state.colWidth}px`;
+    elements.gridInner.style.height = `${state.rowHeight + state.rowCount * state.rowHeight}px`;
     const header = document.createElement("div");
     header.className = "grid-header";
     const corner = document.createElement("div");
@@ -366,18 +399,18 @@
       .querySelectorAll(".grid-row")
       .forEach((row) => row.remove());
     const viewport = elements.gridViewport;
-    const first = Math.max(0, Math.floor(viewport.scrollTop / ROW_HEIGHT) - 8);
+    const first = Math.max(0, Math.floor(viewport.scrollTop / state.rowHeight) - 8);
     const last = Math.min(
       state.rowCount,
-      first + Math.ceil(viewport.clientHeight / ROW_HEIGHT) + 18,
+      first + Math.ceil(viewport.clientHeight / state.rowHeight) + 18,
     );
     const fragment = document.createDocumentFragment();
     const matchSet = new Set(state.matches.map((entry) => entry.address));
     for (let r = first; r < last; r++) {
       const row = document.createElement("div");
       row.className = "grid-row";
-      row.style.top = `${ROW_HEIGHT + r * ROW_HEIGHT}px`;
-      row.style.width = `${ROW_LABEL_WIDTH + state.colCount * COL_WIDTH}px`;
+      row.style.top = `${state.rowHeight + r * state.rowHeight}px`;
+      row.style.width = `${ROW_LABEL_WIDTH + state.colCount * state.colWidth}px`;
       const number = document.createElement("div");
       number.className = "grid-row-number";
       number.textContent = String(r + 1);
@@ -388,6 +421,8 @@
         const element = document.createElement("div");
         element.className = "grid-cell";
         if (cell?.t === "n") element.classList.add("is-number");
+        const fill = cellFillColor(cell);
+        if (fill) element.style.setProperty("--cell-fill", fill);
         if (state.selected.r === r && state.selected.c === c)
           element.classList.add("selected");
         if (matchSet.has(address)) element.classList.add("search-hit");
@@ -428,16 +463,16 @@
     updateSelectionBar();
     if (scroll) {
       const vp = elements.gridViewport;
-      const top = ROW_HEIGHT + state.selected.r * ROW_HEIGHT;
-      const left = ROW_LABEL_WIDTH + state.selected.c * COL_WIDTH;
-      if (top < vp.scrollTop + ROW_HEIGHT)
-        vp.scrollTop = Math.max(0, top - ROW_HEIGHT * 2);
-      else if (top + ROW_HEIGHT > vp.scrollTop + vp.clientHeight)
-        vp.scrollTop = top + ROW_HEIGHT - vp.clientHeight;
+      const top = state.rowHeight + state.selected.r * state.rowHeight;
+      const left = ROW_LABEL_WIDTH + state.selected.c * state.colWidth;
+      if (top < vp.scrollTop + state.rowHeight)
+        vp.scrollTop = Math.max(0, top - state.rowHeight * 2);
+      else if (top + state.rowHeight > vp.scrollTop + vp.clientHeight)
+        vp.scrollTop = top + state.rowHeight - vp.clientHeight;
       if (left < vp.scrollLeft + ROW_LABEL_WIDTH)
         vp.scrollLeft = Math.max(0, left - ROW_LABEL_WIDTH);
-      else if (left + COL_WIDTH > vp.scrollLeft + vp.clientWidth)
-        vp.scrollLeft = left + COL_WIDTH - vp.clientWidth;
+      else if (left + state.colWidth > vp.scrollLeft + vp.clientWidth)
+        vp.scrollLeft = left + state.colWidth - vp.clientWidth;
     }
     scheduleRender();
   }

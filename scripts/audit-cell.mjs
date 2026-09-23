@@ -34,6 +34,8 @@ const result = {
   signatures: {},
   sheets: 0,
   cells: 0,
+  valueCells: 0,
+  colorCells: 0,
   formulas: 0,
 };
 
@@ -54,22 +56,28 @@ for (const filePath of files) {
       cellFormula: true,
       cellText: true,
       cellHTML: false,
+      cellStyles: true,
       bookFiles: true,
     });
     if (!book.SheetNames?.length) throw new Error("no sheets");
     let cells = 0;
+    let values = 0;
     for (const sheetName of book.SheetNames) {
       const sheet = book.Sheets[sheetName] || {};
       for (const [address, cell] of Object.entries(sheet)) {
         if (address.startsWith("!")) continue;
         cells++;
+        if (cell?.v != null || cell?.f) values++;
+        if (cell?.s?.patternType === "solid" && cell.s.fgColor?.rgb)
+          result.colorCells++;
         if (cell?.f) result.formulas++;
       }
     }
-    if (!cells) result.empty.push(name);
+    if (!values) result.empty.push(name);
     result.opened++;
     result.sheets += book.SheetNames.length;
     result.cells += cells;
+    result.valueCells += values;
   } catch (error) {
     result.failed.push({ name, error: String(error?.message || error) });
   }

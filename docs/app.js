@@ -30,6 +30,10 @@
     searchCount: $("searchCount"),
     toast: $("toast"),
     dragOverlay: $("dragOverlay"),
+    sheetNotice: $("sheetNotice"),
+    sheetObjects: $("sheetObjects"),
+    sheetObjectsSummary: $("sheetObjectsSummary"),
+    sheetObjectList: $("sheetObjectList"),
   };
   const state = {
     workbook: null,
@@ -46,6 +50,8 @@
     matchIndex: -1,
     query: "",
     renderPending: false,
+    objectsBySheet: [],
+    objectUrls: [],
   };
   let toastTimer = 0;
   let dragDepth = 0;
@@ -136,6 +142,12 @@
     showToast("파일을 읽는 중입니다…", false, 30000);
     try {
       const buffer = await file.arrayBuffer();
+      if (ext === "cell") {
+        const header = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 8));
+        const isZip = header[0] === 0x50 && header[1] === 0x4b;
+        const isCompound = header[0] === 0xd0 && header[1] === 0xcf;
+        if (!isZip && !isCompound) throw new Error("not a HanCell workbook");
+      }
       let workbook;
       if (["csv", "tsv", "txt"].includes(ext)) {
         const contents = decodeCsv(buffer).replace(/^\uFEFF/, "");
@@ -151,20 +163,22 @@
           cellText: true,
           // HanCell rich text can include hs:size, which SheetJS cannot render as HTML.
           cellHTML: false,
+          bookFiles: ext === "cell",
         });
       }
       if (!workbook.SheetNames || workbook.SheetNames.length === 0)
         throw new Error("no sheets");
-      if (
-        ext === "cell" &&
-        !workbook.SheetNames.some((name) =>
-          Object.keys(workbook.Sheets[name] || {}).some(
-            (key) => key[0] !== "!",
-          ),
-        )
-      ) {
-        throw new Error("unsupported cell format");
+      let objects = { sheets: [], urls: [] };
+      if (ext === "cell") {
+        try {
+          objects = window.CellObjects.extract(workbook);
+        } catch (error) {
+          console.warn("삽입된 개체를 읽지 못했습니다:", error);
+        }
       }
+      state.objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      state.objectsBySheet = objects.sheets;
+      state.objectUrls = objects.urls;
       state.file = file;
       state.workbook = workbook;
       state.activeIndex = 0;
@@ -179,7 +193,7 @@
           ? "H"
           : "X";
       $("fileMeta").textContent =
-        `${formatBytes(file.size)} · ${workbook.SheetNames.length}개 시트 · ${ext === "cell" ? "셀 값 보기 (그림·서식 제외)" : "읽기 전용"}`;
+        `${formatBytes(file.size)} · ${workbook.SheetNames.length}개 시트 · ${ext === "cell" ? "셀 값·그림·도형 텍스트 보기 (원본 배치 제외)" : "읽기 전용"}`;
       $("fileName").title = file.name;
       elements.empty.classList.add("hidden");
       elements.viewer.classList.remove("hidden");
@@ -221,6 +235,20 @@
       maxRow = Math.max(maxRow, address.r);
       maxCol = Math.max(maxCol, address.c);
     }
+    if (maxRow < 0 && state.sheet["!ref"]) {
+      try {
+        const range = XLSX.utils.decode_range(state.sheet["!ref"]);
+        maxRow = range.e.r;
+        maxCol = range.e.c;
+      } catch {
+        // Keep the default grid for a malformed empty-sheet range.
+      }
+    }
+    const sheetObjects = state.objectsBySheet[index];
+    if (sheetObjects) {
+      maxRow = Math.max(maxRow, sheetObjects.maxRow);
+      maxCol = Math.max(maxCol, sheetObjects.maxCol);
+    }
     state.actualRows = maxRow + 1;
     state.actualCols = maxCol + 1;
     state.rowCount = Math.min(MAX_ROWS, Math.max(30, state.actualRows));
@@ -236,6 +264,7 @@
       `${state.actualRows.toLocaleString()}행 × ${state.actualCols.toLocaleString()}열`;
     $("footerCount").textContent =
       `${state.cellKeys.length.toLocaleString()}개 셀`;
+    renderSheetObjects();
     renderTabs();
     renderGridStructure();
     elements.gridViewport.scrollTop = 0;
@@ -248,6 +277,54 @@
         false,
         7000,
       );
+    }
+  }
+
+  function renderSheetObjects() {
+    const objects = state.objectsBySheet[state.activeIndex] || {
+      items: [],
+      plainShapes: 0,
+    };
+    const hasCells = state.cellKeys.length > 0;
+    elements.sheetNotice.classList.toggle("hidden", hasCells);
+    if (!hasCells) {
+      elements.sheetNotice.textContent = objects.items.length
+        ? "이 시트에는 셀 값이 없습니다. 아래 삽입된 개체를 확인하세요."
+        : "표시할 셀 값이 없습니다. 빈 양식이나 서식만 있는 시트일 수 있습니다.";
+    }
+    const total = objects.items.length + objects.plainShapes;
+    elements.sheetObjects.classList.toggle("hidden", total === 0);
+    elements.sheetObjects.open = !hasCells && total > 0;
+    elements.sheetObjectsSummary.textContent =
+      `삽입된 개체 ${total.toLocaleString()}개 (원본 배치와 다를 수 있음)`;
+    elements.sheetObjectList.replaceChildren();
+    for (const item of objects.items) {
+      const card = document.createElement("div");
+      card.className = "sheet-object-card";
+      const location = document.createElement("small");
+      location.textContent = `${columnName(item.col)}${item.row + 1}`;
+      card.append(location);
+      if (item.type === "image") {
+        const picture = document.createElement("img");
+        picture.src = item.url;
+        picture.alt = item.name;
+        picture.loading = "lazy";
+        card.append(picture);
+        const caption = document.createElement("span");
+        caption.textContent = item.name;
+        card.append(caption);
+      } else {
+        const text = document.createElement("span");
+        text.textContent = item.type === "text" ? item.text : "차트·개체 미리보기는 지원하지 않습니다.";
+        card.append(text);
+      }
+      elements.sheetObjectList.append(card);
+    }
+    if (objects.plainShapes) {
+      const note = document.createElement("p");
+      note.className = "sheet-objects-note";
+      note.textContent = `텍스트가 없는 도형 ${objects.plainShapes.toLocaleString()}개는 표시하지 않습니다.`;
+      elements.sheetObjectList.append(note);
     }
   }
 

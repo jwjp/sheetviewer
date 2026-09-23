@@ -1,10 +1,10 @@
 # 시트뷰 (Sheetview)
 
-CSV, Excel, 한셀 문서를 살펴보는 가벼운 오픈소스 웹 뷰어입니다. 파일은 서버로 전송하지 않고 브라우저에서 읽습니다. 편집이나 저장 기능은 없습니다.
+CSV, Excel, 한셀 문서를 살펴보는 가벼운 오픈소스 뷰어입니다. 웹과 Windows 설치 앱에서 사용할 수 있습니다. 파일은 서버로 전송하지 않고 사용자의 기기에서 읽습니다. 편집이나 저장 기능은 없습니다.
 
 ## 사용하기
 
-브라우저에서 `docs/index.html`을 열거나, [온라인 뷰어](https://jwjp.github.io/sheetviewer/)를 이용하세요. 파일 선택 버튼을 누르거나 파일을 화면에 끌어다 놓으면 됩니다.
+[GitHub Releases](https://github.com/jwjp/sheetviewer/releases)에서 Windows 설치 파일을 내려받아 설치하거나, 브라우저에서 `docs/index.html` 또는 [온라인 뷰어](https://jwjp.github.io/sheetviewer/)를 여세요. 파일 선택 버튼을 누르거나 파일을 화면에 끌어다 놓으면 됩니다. 설치 앱은 인터넷 연결 없이 사용할 수 있으며 WebView2가 필요합니다. Windows 10/11에는 보통 WebView2가 설치되어 있고, 없으면 설치 프로그램이 설치를 안내합니다.
 
 | 형식 | 상태 |
 | --- | --- |
@@ -22,7 +22,7 @@ CSV, Excel, 한셀 문서를 살펴보는 가벼운 오픈소스 웹 뷰어입�
 - 시트 안에서 값 검색, 이전/다음 결과 이동
 - 큰 시트를 위한 세로 가상 스크롤
 - 한국어 CSV 인코딩 자동 판별, 탭/세미콜론/파이프 구분자 감지
-- 설치나 계정 없이 사용 가능
+- 웹 버전은 설치 없이, Windows 앱은 오프라인에서 사용 가능
 
 현재 한 파일 최대 30MB, 화면 표시 범위는 첫 100,000행 × 200열입니다. 수식은 재계산하지 않고 파일에 저장된 값을 표시합니다. 차트, 이미지, 피벗 테이블 등은 표시하지 않습니다. 악성 문서의 매크로는 실행하지 않습니다.
 
@@ -36,13 +36,26 @@ python -m http.server 8000 --directory docs
 
 그다음 `http://localhost:8000`을 방문합니다.
 
-## 배포
+## Windows 앱 빌드
+
+빌드 PC에는 [Rust MSVC 툴체인, Microsoft C++ Build Tools, WebView2](https://tauri.app/start/prerequisites/)와 Node.js가 필요합니다. 저장소 루트에서 실행하세요.
+
+```sh
+npm ci
+npm run desktop:build
+```
+
+완료되면 `src-tauri/target/release/bundle/nsis/`에 Windows 설치 파일(`-setup.exe`)이 생성됩니다. 앱 화면은 웹 버전과 동일한 `docs` 파일을 내장합니다. 아이콘을 변경하려면 Pillow를 설치한 뒤 `python scripts/generate_icons.py`를 실행하세요.
+
+현재 배포 파일에는 코드 서명이 적용되지 않았습니다. Windows에서 SmartScreen 경고가 나타날 수 있으므로 GitHub Releases의 게시자와 파일 해시를 확인하세요.
+
+## 웹 배포
 
 `main` 브랜치의 `docs` 폴더가 GitHub Pages의 게시 소스입니다. `docs` 파일을 변경하여 푸시하면 GitHub Pages가 새 버전을 게시합니다.
 
 ## 개발
 
-정적 HTML/CSS/JavaScript 프로젝트입니다. 화면은 `docs/index.html`, 스타일은 `docs/style.css`, 파일 처리와 표 렌더링은 `docs/app.js`에 있습니다. 변경 후 브라우저에서 직접 확인할 수 있습니다.
+정적 HTML/CSS/JavaScript 화면과 Tauri 2 데스크톱 셸로 구성됩니다. 화면은 `docs/index.html`, 스타일은 `docs/style.css`, 파일 처리와 표 렌더링은 `docs/app.js`에 있습니다. Windows 앱 설정은 `src-tauri/tauri.conf.json`에 있습니다. 화면 변경 후 웹과 설치 앱을 모두 확인하세요.
 
 스프레드시트 파싱에는 [SheetJS Community Edition 0.20.3](https://docs.sheetjs.com/docs/miscellany/formats/)을 사용합니다. 배포 파일은 `docs/vendor/xlsx.full.min.js`에 포함되어 있으며 Apache-2.0 라이선스 전문은 `docs/vendor/LICENSE.sheetjs.txt`에 있습니다.
 

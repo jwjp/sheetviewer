@@ -43,6 +43,7 @@ jobs:
         with:
           name: signed-windows-build
           path: .release/v*/*
+          include-hidden-files: true
           if-no-files-found: error
       - name: Publish GitHub release
         if: ${{ inputs.publish }}

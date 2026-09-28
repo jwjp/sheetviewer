@@ -16,8 +16,10 @@
   WriteRegDWORD SHCTX "Software\Classes\${SHEETVIEW_PROGID}" "AllowSilentDefaultTakeOver" 1
   WriteRegStr SHCTX "Software\Classes\${SHEETVIEW_PROGID}\DefaultIcon" "" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\",0"
   WriteRegStr SHCTX "Software\Classes\${SHEETVIEW_PROGID}\shell\open\command" "" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%1$\""
-  WriteRegStr SHCTX "Software\Classes\Applications\${MAINBINARYNAME}.exe" "FriendlyAppName" "${PRODUCTNAME}"
+  ; Keep the existing NSIS product identity while displaying an English app name.
+  WriteRegStr SHCTX "Software\Classes\Applications\${MAINBINARYNAME}.exe" "FriendlyAppName" "Sheetview"
   WriteRegStr SHCTX "Software\Classes\Applications\${MAINBINARYNAME}.exe\shell\open\command" "" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%1$\""
+  WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "Sheetview"
   !insertmacro SHEETVIEW_REGISTER_EXTENSION "csv"
   !insertmacro SHEETVIEW_REGISTER_EXTENSION "tsv"
   !insertmacro SHEETVIEW_REGISTER_EXTENSION "xlsx"

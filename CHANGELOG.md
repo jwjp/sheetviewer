@@ -2,6 +2,10 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.6 — English Windows app choice
+
+- Show "Sheetview" in the Windows **Open with** and installed apps lists while preserving the existing installation identity for updates.
+
 ## 0.1.5 — English interface
 
 - Display app controls, notices, errors, update messages, and accessibility labels in English.

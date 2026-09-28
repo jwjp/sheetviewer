@@ -80,6 +80,10 @@
     return name.split(".").pop().toLowerCase();
   }
 
+  function countLabel(count, singular, plural = `${singular}s`) {
+    return `${count.toLocaleString("en-US")} ${count === 1 ? singular : plural}`;
+  }
+
   function columnName(index) {
     let name = "";
     for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) {
@@ -147,16 +151,16 @@
     const ext = extension(file.name);
     if (!ACCEPTED.has(ext)) {
       showToast(
-        "지원하는 파일은 CSV, TSV, XLSX, XLS, XLSM, XLSB, ODS, CELL입니다.",
+        "Supported files: CSV, TSV, TXT, XLSX, XLS, XLSM, XLSB, ODS, and CELL.",
         true,
       );
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      showToast("현재 버전은 30MB 이하 파일을 열 수 있습니다.", true);
+      showToast("Files must be 30 MB or smaller.", true);
       return;
     }
-    showToast("파일을 읽는 중입니다…", false, 30000);
+    showToast("Opening file…", false, 30000);
     try {
       const buffer = await file.arrayBuffer();
       if (ext === "cell") {
@@ -191,7 +195,7 @@
         try {
           objects = window.CellObjects.extract(workbook);
         } catch (error) {
-          console.warn("삽입된 개체를 읽지 못했습니다:", error);
+          console.warn("Failed to read embedded objects:", error);
         }
       }
       state.objectUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -211,23 +215,23 @@
           ? "H"
           : "X";
       $("fileMeta").textContent =
-        `${formatBytes(file.size)} · ${workbook.SheetNames.length}개 시트 · ${ext === "cell" ? "셀 값·배경색·그림·도형 텍스트 보기 (원본 배치 제외)" : "읽기 전용"}`;
+        `${formatBytes(file.size)} · ${countLabel(workbook.SheetNames.length, "sheet")} · ${ext === "cell" ? "Cell values, fills, images, and drawing text (simplified layout)" : "Read only"}`;
       $("fileName").title = file.name;
       elements.empty.classList.add("hidden");
       elements.viewer.classList.remove("hidden");
       activateSheet(0);
       elements.toast.classList.add("hidden");
     } catch (error) {
-      console.error("파일 열기 실패:", error);
+      console.error("Failed to open file:", error);
       if (ext === "cell") {
         showToast(
-          "이 .cell 파일은 직접 읽을 수 없습니다. 한셀에서 '다른 이름으로 저장' → XLSX 또는 CSV로 저장한 뒤 열어 주세요.",
+          "This .cell file could not be opened. In HanCell, use Save As to export it as XLSX or CSV, then open the exported file.",
           true,
           11000,
         );
       } else {
         showToast(
-          "파일을 열지 못했습니다. 손상되었거나 암호가 걸린 파일인지 확인해 주세요.",
+          "The file could not be opened. Check whether it is damaged or password protected.",
           true,
           7000,
         );
@@ -290,10 +294,10 @@
     elements.searchCount.textContent = "";
     $("sheetName").textContent = name;
     $("dimensionText").textContent =
-      `${state.actualRows.toLocaleString()}행 × ${state.actualCols.toLocaleString()}열`;
+      `${countLabel(state.actualRows, "row")} × ${countLabel(state.actualCols, "column")}`;
     $("footerCount").textContent = state.filledCellCount
-      ? `${state.valueCellCount.toLocaleString()}개 값 · ${state.filledCellCount.toLocaleString()}개 색상 셀`
-      : `${state.valueCellCount.toLocaleString()}개 셀`;
+      ? `${countLabel(state.valueCellCount, "value")} · ${countLabel(state.filledCellCount, "filled cell")}`
+      : countLabel(state.valueCellCount, "cell");
     renderSheetObjects();
     renderTabs();
     renderGridStructure();
@@ -303,7 +307,7 @@
     renderRows();
     if (state.actualRows > MAX_ROWS || state.actualCols > MAX_COLS) {
       showToast(
-        `큰 시트는 처음 ${MAX_ROWS.toLocaleString()}행, ${MAX_COLS}열까지만 표시합니다.`,
+        `Large sheets show only the first ${countLabel(MAX_ROWS, "row")} and ${countLabel(MAX_COLS, "column")}.`,
         false,
         7000,
       );
@@ -320,17 +324,17 @@
     if (!hasValues) {
       elements.sheetNotice.textContent = state.filledCellCount
         ? objects.items.length
-          ? "셀 값은 없습니다. 배경색은 표에, 삽입된 개체는 아래에 표시됩니다."
-          : "셀 값은 없지만 배경색으로 만든 내용이 표에 표시됩니다."
+          ? "No cell values. Fills appear in the grid, and embedded objects appear below."
+          : "No cell values. Content made with cell fills appears in the grid."
         : objects.items.length
-          ? "이 시트에는 셀 값이 없습니다. 아래 삽입된 개체를 확인하세요."
-          : "표시할 셀 값이 없습니다. 빈 양식이나 서식만 있는 시트일 수 있습니다.";
+          ? "No cell values on this sheet. See the embedded objects below."
+          : "No cell values to display. This sheet may be an empty template or contain only formatting.";
     }
     const total = objects.items.length + objects.plainShapes;
     elements.sheetObjects.classList.toggle("hidden", total === 0);
     elements.sheetObjects.open = !hasValues && total > 0;
     elements.sheetObjectsSummary.textContent =
-      `삽입된 개체 ${total.toLocaleString()}개 (원본 배치와 다를 수 있음)`;
+      `${countLabel(total, "embedded object")} (placement may differ from the original)`;
     elements.sheetObjectList.replaceChildren();
     for (const item of objects.items) {
       const card = document.createElement("div");
@@ -349,7 +353,7 @@
         card.append(caption);
       } else {
         const text = document.createElement("span");
-        text.textContent = item.type === "text" ? item.text : "차트·개체 미리보기는 지원하지 않습니다.";
+        text.textContent = item.type === "text" ? item.text : "Chart and object previews are unavailable.";
         card.append(text);
       }
       elements.sheetObjectList.append(card);
@@ -357,7 +361,7 @@
     if (objects.plainShapes) {
       const note = document.createElement("p");
       note.className = "sheet-objects-note";
-      note.textContent = `텍스트가 없는 도형 ${objects.plainShapes.toLocaleString()}개는 표시하지 않습니다.`;
+      note.textContent = `${countLabel(objects.plainShapes, "shape")} without text ${objects.plainShapes === 1 ? "is" : "are"} not displayed.`;
       elements.sheetObjectList.append(note);
     }
   }
@@ -500,7 +504,7 @@
       state.matches.sort((a, b) => a.r - b.r || a.c - b.c);
     }
     elements.searchCount.textContent = state.query
-      ? `${state.matches.length}개`
+      ? countLabel(state.matches.length, "match", "matches")
       : "";
     if (state.matches.length) moveMatch(1);
     else scheduleRender();
@@ -593,7 +597,7 @@
       await openFile(new File([new Uint8Array(bytes)], name));
     } catch (error) {
       console.error("Failed to open the file passed to the app:", error);
-      showToast("연결된 파일을 열지 못했습니다. 파일이 있는지 확인해 주세요.", true, 7000);
+      showToast("Could not open the linked file. Check that it still exists.", true, 7000);
     }
   }
 
@@ -603,30 +607,30 @@
     if (!invoke || updateBusy) return;
     updateBusy = true;
     elements.updateCheck.disabled = true;
-    elements.updateCheck.textContent = "업데이트 확인 중…";
+    elements.updateCheck.textContent = "Checking for updates…";
     try {
       const version = await invoke("prepare_update");
       if (version) {
         elements.updateMessage.textContent =
-          `새 버전 ${version}의 다운로드와 검증이 완료되었습니다.`;
+          `Version ${version} has been downloaded and verified.`;
         elements.updateInstall.classList.remove("hidden");
         elements.updateBanner.classList.remove("hidden");
       } else {
         elements.updateBanner.classList.add("hidden");
-        if (manual) showToast("현재 최신 버전입니다.");
+        if (manual) showToast("You're up to date.");
       }
     } catch (error) {
       console.error("Update check or download failed:", error);
       if (manual)
         showToast(
-          "업데이트를 확인하거나 내려받지 못했습니다. 인터넷 연결을 확인해 주세요.",
+          "Could not check for or download updates. Check your internet connection.",
           true,
           7000,
         );
     } finally {
       updateBusy = false;
       elements.updateCheck.disabled = false;
-      elements.updateCheck.textContent = "업데이트 확인";
+      elements.updateCheck.textContent = "Check for updates";
     }
   }
 
@@ -636,14 +640,14 @@
     updateBusy = true;
     elements.updateCheck.disabled = true;
     elements.updateInstall.disabled = true;
-    elements.updateMessage.textContent = "업데이트를 설치하고 앱을 다시 시작합니다…";
+    elements.updateMessage.textContent = "Installing the update and restarting the app…";
     try {
       await invoke("install_update");
     } catch (error) {
       console.error("Update installation failed:", error);
       elements.updateMessage.textContent =
-        "업데이트 설치에 실패했습니다. 다시 시도할 수 있습니다.";
-      showToast("업데이트를 설치하지 못했습니다.", true, 7000);
+        "The update could not be installed. You can try again.";
+      showToast("Could not install the update.", true, 7000);
       updateBusy = false;
       elements.updateCheck.disabled = false;
       elements.updateInstall.disabled = false;

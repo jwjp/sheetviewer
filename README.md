@@ -4,6 +4,8 @@
 
 Sheetview is an open-source, read-only viewer for CSV, Excel, and HanCell spreadsheets. Use it in a browser or as an installable Windows app. Files are processed on your device and are never uploaded to a server.
 
+The app interface is in English. This README also has a [Korean translation](README.ko.md).
+
 ## Use Sheetview
 
 Download the Windows installer from [GitHub Releases](https://github.com/jwjp/sheetviewer/releases), or open `docs/index.html` or the [online viewer](https://jwjp.github.io/sheetviewer/) in a browser. Choose a file or drag it onto the window. The installed app works offline and requires WebView2, which is usually present on Windows 10/11. The installer can prompt for WebView2 if it is missing.

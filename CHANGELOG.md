@@ -2,6 +2,11 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.5 — English interface
+
+- Display app controls, notices, errors, update messages, and accessibility labels in English.
+- Show an English window title and installer descriptions while retaining the existing Windows installation identity for updates.
+
 ## 0.1.4 — In-app updates
 
 - Check GitHub Releases for new desktop versions at startup and on demand.

@@ -98,7 +98,7 @@
               urls.push(url);
               imageUrls.set(imagePath, url);
             }
-            const name = picture.getElementsByTagNameNS(XDR, "cNvPr")[0]?.getAttribute("name") || "그림";
+            const name = picture.getElementsByTagNameNS(XDR, "cNvPr")[0]?.getAttribute("name") || "Image";
             sheets[index].items.push({ type: "image", url, name, ...position });
           }
           for (const shape of Array.from(anchor.getElementsByTagNameNS(XDR, "sp"))) {

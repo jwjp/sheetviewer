@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#101c29" />
     <meta
       name="description"
-      content="CSV, Excel, 한셀 문서를 브라우저에서 열어 보는 오픈소스 시트 뷰어"
+      content="An open-source viewer for CSV, Excel, and HanCell spreadsheets"
     />
-    <title>시트뷰 — 스프레드시트 뷰어</title>
+    <title>Sheetview — Spreadsheet Viewer</title>
     <link
       rel="icon"
       type="image/svg+xml"
@@ -22,25 +22,24 @@
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div class="brand" aria-label="시트뷰">
+        <div class="brand" aria-label="Sheetview">
           <span class="brand-mark" aria-hidden="true"
             ><span></span><span></span><span></span><span></span
           ></span>
-          <span>시트뷰</span>
+          <span>Sheetview</span>
         </div>
         <span class="topbar-divider"></span>
-        <span class="topbar-caption">스프레드시트 뷰어</span>
+        <span class="topbar-caption">Spreadsheet Viewer</span>
         <span class="topbar-spacer"></span>
         <button
           class="button top-update hidden"
           id="updateCheckButton"
           type="button"
         >
-          업데이트 확인
+          Check for updates
         </button>
         <span class="privacy-note"
-          ><span class="privacy-dot"></span> 파일은 이 기기에서만
-          처리됩니다</span
+          ><span class="privacy-dot"></span> Files stay on your device</span
         >
         <button
           class="button button-primary top-open"
@@ -52,7 +51,7 @@
               d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"
             />
           </svg>
-          파일 열기
+          Open file
         </button>
       </header>
 
@@ -68,14 +67,14 @@
           id="updateInstallButton"
           type="button"
         >
-          업데이트 설치
+          Install update
         </button>
         <button
           class="button update-dismiss"
           id="updateDismissButton"
           type="button"
         >
-          나중에
+          Later
         </button>
       </div>
 
@@ -89,11 +88,11 @@
           <div class="empty-layout">
             <div class="empty-copy">
               <h1 id="emptyTitle">
-                파일을 열고<br /><em>시트를 살펴보세요.</em>
+                Open a file.<br /><em>Explore its sheets.</em>
               </h1>
               <p>
-                CSV, Excel, 한셀 문서를 빠르게 확인하세요. 파일을 선택하거나 이
-                화면에 끌어다 놓으면 됩니다.
+                Preview CSV, Excel, and HanCell spreadsheets. Select a file or
+                drag it onto this window.
               </p>
               <button
                 class="button button-primary button-large"
@@ -105,15 +104,15 @@
                     d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"
                   />
                 </svg>
-                파일 선택
+                Choose a file
               </button>
               <div class="format-list">
                 <span>CSV</span><span>XLSX</span><span>XLS</span
                 ><span>CELL</span>
               </div>
               <p class="format-footnote">
-                한셀 문서의 셀 값·배경색과 삽입된 그림·도형 텍스트를 살펴볼 수 있습니다.
-                원본 서식과 배치는 간소화됩니다.
+                Explore cell values, fills, embedded images, and drawing text in
+                HanCell files. Formatting and placement are simplified.
               </p>
             </div>
             <div
@@ -121,7 +120,7 @@
               id="dropCard"
               tabindex="0"
               role="button"
-              aria-label="파일을 여기로 끌어다 놓거나 클릭하여 선택"
+              aria-label="Drop a file here or click to choose one"
             >
               <div class="drop-illustration" aria-hidden="true">
                 <div class="sheet-preview">
@@ -133,17 +132,17 @@
                 </div>
                 <span class="preview-badge">.xlsx</span>
               </div>
-              <strong>여기에 파일 놓기</strong>
-              <span>또는 클릭하여 파일 선택</span>
+              <strong>Drop a file here</strong>
+              <span>or click to choose one</span>
             </div>
           </div>
           <div class="empty-bottom">
-            <span>읽기 전용</span><span>오프라인 사용 가능</span
-            ><span>로컬 처리</span>
+            <span>Read only</span><span>Works offline</span
+            ><span>Processed locally</span>
           </div>
         </section>
 
-        <section class="viewer hidden" id="viewer" aria-label="시트 뷰어">
+        <section class="viewer hidden" id="viewer" aria-label="Sheet viewer">
           <div class="document-bar">
             <div class="file-icon" aria-hidden="true">X</div>
             <div class="document-identity">
@@ -156,14 +155,14 @@
                 id="newFileButton"
                 type="button"
               >
-                다른 파일 열기
+                Open another file
               </button>
             </div>
           </div>
 
           <div class="viewer-toolbar">
             <div class="sheet-heading">
-              <span class="toolbar-label">시트</span
+              <span class="toolbar-label">Sheet</span
               ><strong id="sheetName"></strong>
             </div>
             <span class="toolbar-divider"></span>
@@ -178,8 +177,8 @@
                 id="searchInput"
                 type="search"
                 autocomplete="off"
-                placeholder="시트에서 찾기"
-                aria-label="시트에서 찾기"
+                placeholder="Find in sheet"
+                aria-label="Find in sheet"
               />
               <span id="searchCount" aria-live="polite"></span>
             </div>
@@ -187,8 +186,8 @@
               class="icon-button"
               id="searchPrev"
               type="button"
-              aria-label="이전 검색 결과"
-              title="이전 결과"
+              aria-label="Previous search result"
+              title="Previous result"
             >
               ↑
             </button>
@@ -196,8 +195,8 @@
               class="icon-button"
               id="searchNext"
               type="button"
-              aria-label="다음 검색 결과"
-              title="다음 결과"
+              aria-label="Next search result"
+              title="Next result"
             >
               ↓
             </button>
@@ -219,7 +218,7 @@
             class="grid-viewport"
             id="gridViewport"
             tabindex="0"
-            aria-label="스프레드시트 표"
+            aria-label="Spreadsheet grid"
           >
             <div class="grid-inner" id="gridInner"></div>
           </div>
@@ -229,7 +228,7 @@
               class="sheet-tabs"
               id="sheetTabs"
               role="tablist"
-              aria-label="시트 선택"
+              aria-label="Choose a sheet"
             ></div>
             <div class="footer-count" id="footerCount"></div>
           </div>
@@ -237,7 +236,7 @@
       </main>
 
       <div class="drag-overlay hidden" id="dragOverlay" aria-hidden="true">
-        <div>파일을 놓아 열기</div>
+        <div>Drop to open</div>
       </div>
       <div
         class="toast hidden"

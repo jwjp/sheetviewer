@@ -76,6 +76,7 @@
   let toastTimer = 0;
   let dragDepth = 0;
   let selectionDragging = false;
+  let headerSelectionDrag = null;
   let resizeSession = null;
 
   function showToast(message, isError = false, duration = 5000) {
@@ -477,12 +478,18 @@
       label.className = "grid-column";
       label.style.width = `${state.columnWidths[c]}px`;
       label.dataset.col = String(c);
-      label.title = `Select column ${columnName(c)}`;
+      label.title = `Select column ${columnName(c)}; drag to select more columns`;
       label.append(document.createTextNode(columnName(c)));
       label.addEventListener("pointerdown", (event) => {
         if (event.button !== 0 || event.target !== label) return;
         event.preventDefault();
+        event.stopPropagation();
         selectColumn(c);
+        headerSelectionDrag = {
+          kind: "columns",
+          anchor: c,
+          pointerId: event.pointerId,
+        };
       });
       const handle = document.createElement("div");
       handle.className = "column-resize-handle";
@@ -524,14 +531,20 @@
       const number = document.createElement("div");
       number.className = "grid-row-number";
       number.textContent = String(r + 1);
-      number.title = `Select row ${r + 1}`;
+      number.title = `Select row ${r + 1}; drag to select more rows`;
       if ((state.selectionScope === "rows" || state.selectionScope === "all") &&
           r >= bounds.firstRow && r <= bounds.lastRow)
         number.classList.add("selected");
       number.addEventListener("pointerdown", (event) => {
         if (event.button !== 0 || event.target !== number) return;
         event.preventDefault();
+        event.stopPropagation();
         selectRow(r);
+        headerSelectionDrag = {
+          kind: "rows",
+          anchor: r,
+          pointerId: event.pointerId,
+        };
       });
       const handle = document.createElement("div");
       handle.className = "row-resize-handle";
@@ -635,11 +648,27 @@
   }
 
   function selectColumn(c) {
-    selectRange({ r: dataRowCount() - 1, c }, { r: 0, c }, "columns");
+    selectColumnRange(c, c);
   }
 
   function selectRow(r) {
-    selectRange({ r, c: dataColCount() - 1 }, { r, c: 0 }, "rows");
+    selectRowRange(r, r);
+  }
+
+  function selectColumnRange(anchor, focus) {
+    selectRange(
+      { r: dataRowCount() - 1, c: anchor },
+      { r: 0, c: focus },
+      "columns",
+    );
+  }
+
+  function selectRowRange(anchor, focus) {
+    selectRange(
+      { r: anchor, c: dataColCount() - 1 },
+      { r: focus, c: 0 },
+      "rows",
+    );
   }
 
   function selectAll() {
@@ -829,6 +858,18 @@
     return c < state.colCount ? { r, c } : null;
   }
 
+  function columnAtPoint(clientX) {
+    const x = clientX - elements.gridInner.getBoundingClientRect().left;
+    let c = 0;
+    while (c < state.colCount - 1 && x >= state.columnOffsets[c + 1]) c++;
+    return c;
+  }
+
+  function rowAtPoint(clientY) {
+    const y = clientY - elements.gridInner.getBoundingClientRect().top;
+    return Math.max(0, Math.min(state.rowCount - 1, rowAtOffset(y)));
+  }
+
   function runSearch() {
     state.query = elements.search.value.trim().toLocaleLowerCase();
     state.matches = [];
@@ -906,6 +947,19 @@
       }
       return;
     }
+    if (headerSelectionDrag) {
+      if (event.pointerId !== headerSelectionDrag.pointerId) return;
+      if (headerSelectionDrag.kind === "columns") {
+        const c = columnAtPoint(event.clientX);
+        if (c !== state.selected.c)
+          selectColumnRange(headerSelectionDrag.anchor, c);
+      } else {
+        const r = rowAtPoint(event.clientY);
+        if (r !== state.selected.r)
+          selectRowRange(headerSelectionDrag.anchor, r);
+      }
+      return;
+    }
     if (!selectionDragging) return;
     const cell = cellAtPoint(event.clientX, event.clientY);
     if (cell && (cell.r !== state.selected.r || cell.c !== state.selected.c))
@@ -916,6 +970,7 @@
       scheduleRender();
     resizeSession = null;
     selectionDragging = false;
+    headerSelectionDrag = null;
     document.body.classList.remove("resizing-column");
     document.body.classList.remove("resizing-row");
   }

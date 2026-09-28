@@ -2,6 +2,12 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.10 — Header range selection
+
+- Drag across column headers to select all data in those columns.
+- Drag across row numbers to select all data in those rows.
+- Keep header divider dragging for resizing separate from range selection.
+
 ## 0.1.9 — Row sizing and whole-data selection
 
 - Keep cell selections when the horizontal scrollbar is clicked.

@@ -2,6 +2,12 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.7 — English Windows app identity
+
+- Use "Sheetview" for the executable, installer, and shortcut display names.
+- Preserve the existing NSIS registry identity so earlier installations can still update.
+- Migrate earlier Start menu and desktop shortcuts to the English name.
+
 ## 0.1.6 — English Windows app choice
 
 - Show "Sheetview" in the Windows **Open with** and installed apps lists while preserving the existing installation identity for updates.

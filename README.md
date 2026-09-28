@@ -57,6 +57,8 @@ npm run desktop:build
 
 The Windows installer (`-setup.exe`) is written to `src-tauri/target/release/bundle/nsis/`. This local build does not create update signatures; use the release script below for a signed update. The app embeds the same `docs` files as the web version. To regenerate the icons, install Pillow and run `python scripts/generate_icons.py`.
 
+The NSIS installer uses a template based on Tauri CLI 2.11.5 at `src-tauri/windows/installer.nsi`. It keeps the original uninstall registry identity while using the English display name. Review this template when upgrading the Tauri CLI.
+
 The installed app checks GitHub Releases when it starts. If a newer version exists, it downloads and verifies the update, then offers an **Install update** button. You can also select **Check for updates** in the app. The first updater-enabled release must be installed manually by users of version 0.1.3 or earlier.
 
 ## Publish a Windows update

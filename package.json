@@ -1,7 +1,7 @@
 {
   "name": "sheetview",
   "private": true,
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Offline CSV, Excel and HanCell viewer",
   "scripts": {
     "tauri": "tauri",

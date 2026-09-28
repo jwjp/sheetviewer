@@ -56,6 +56,8 @@ npm run desktop:build
 
 완료되면 `src-tauri/target/release/bundle/nsis/`에 Windows 설치 파일(`-setup.exe`)이 생성됩니다. 이 로컬 빌드에는 업데이트 서명이 포함되지 않으므로 업데이트 배포에는 아래 릴리스 스크립트를 사용하세요. 앱 화면은 웹 버전과 동일한 `docs` 파일을 내장합니다. 아이콘을 변경하려면 Pillow를 설치한 뒤 `python scripts/generate_icons.py`를 실행하세요.
 
+NSIS 설치 프로그램은 Tauri CLI 2.11.5를 바탕으로 한 `src-tauri/windows/installer.nsi` 템플릿을 사용합니다. 영어 표시 이름을 쓰면서 기존 제거 프로그램의 등록 식별자를 유지합니다. Tauri CLI를 업그레이드할 때 이 템플릿을 검토하세요.
+
 설치 앱은 실행할 때 GitHub Releases에서 새 버전을 확인합니다. 새 버전이 있으면 자동으로 내려받아 서명을 검증한 뒤 **업데이트 설치** 버튼을 표시합니다. 앱의 **업데이트 확인** 버튼으로 직접 확인할 수도 있습니다. 0.1.3 이하 버전을 사용 중이라면 업데이트 기능이 들어간 첫 버전은 한 번 직접 설치해야 합니다.
 
 ## Windows 업데이트 배포

@@ -25,6 +25,8 @@ We audited 95 valid `.cell` documents in a HanCell 2016 folder. Every document's
 ## Features
 
 - Switch sheets, select cells, and inspect formulas
+- Drag a column header divider to resize it, or double-click the divider to fit its contents
+- Drag across cells or use Shift+click / Shift+arrow keys to select a range; press Ctrl+C to copy displayed values as a table into Excel or another spreadsheet
 - View embedded images and drawing text by sheet in HanCell documents
 - Show solid cell fills and use a compact grid for color-based documents
 - Search cell values and move between matches

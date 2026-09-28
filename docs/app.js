@@ -3,6 +3,8 @@
 
   const ROW_HEIGHT = 34;
   const COL_WIDTH = 150;
+  const MIN_COL_WIDTH = 26;
+  const MAX_COL_WIDTH = 2000;
   const ROW_LABEL_WIDTH = 62;
   const MAX_ROWS = 100000;
   const MAX_COLS = 200;
@@ -52,9 +54,11 @@
     valueCellCount: 0,
     filledCellCount: 0,
     rowHeight: ROW_HEIGHT,
-    colWidth: COL_WIDTH,
+    columnWidths: [],
+    columnOffsets: [],
     compactGrid: false,
     selected: { r: 0, c: 0 },
+    selectionAnchor: { r: 0, c: 0 },
     matches: [],
     matchIndex: -1,
     query: "",
@@ -64,6 +68,8 @@
   };
   let toastTimer = 0;
   let dragDepth = 0;
+  let selectionDragging = false;
+  let resizeSession = null;
 
   function showToast(message, isError = false, duration = 5000) {
     clearTimeout(toastTimer);
@@ -90,6 +96,30 @@
       name = String.fromCharCode(65 + ((n - 1) % 26)) + name;
     }
     return name;
+  }
+
+  function selectionBounds() {
+    return {
+      firstRow: Math.min(state.selectionAnchor.r, state.selected.r),
+      lastRow: Math.max(state.selectionAnchor.r, state.selected.r),
+      firstCol: Math.min(state.selectionAnchor.c, state.selected.c),
+      lastCol: Math.max(state.selectionAnchor.c, state.selected.c),
+    };
+  }
+
+  function inSelection(r, c, bounds = selectionBounds()) {
+    return r >= bounds.firstRow && r <= bounds.lastRow &&
+      c >= bounds.firstCol && c <= bounds.lastCol;
+  }
+
+  function rebuildColumnOffsets() {
+    state.columnOffsets = [ROW_LABEL_WIDTH];
+    for (const width of state.columnWidths)
+      state.columnOffsets.push(state.columnOffsets.at(-1) + width);
+  }
+
+  function gridWidth() {
+    return state.columnOffsets.at(-1);
   }
 
   function cellText(cell) {
@@ -246,6 +276,7 @@
   }
 
   function activateSheet(index) {
+    finishPointerInteraction();
     state.activeIndex = index;
     const name = state.workbook.SheetNames[index];
     state.sheet = state.workbook.Sheets[name];
@@ -283,10 +314,12 @@
     const compactGrid = state.filledCellCount >= 20 && narrowColumns >= 12;
     state.compactGrid = compactGrid;
     state.rowHeight = compactGrid ? 26 : ROW_HEIGHT;
-    state.colWidth = compactGrid ? 26 : COL_WIDTH;
     state.rowCount = Math.min(MAX_ROWS, Math.max(30, state.actualRows));
     state.colCount = Math.min(MAX_COLS, Math.max(12, state.actualCols));
+    state.columnWidths = Array(state.colCount).fill(compactGrid ? 26 : COL_WIDTH);
+    rebuildColumnOffsets();
     state.selected = { r: 0, c: 0 };
+    state.selectionAnchor = { r: 0, c: 0 };
     state.matches = [];
     state.matchIndex = -1;
     state.query = "";
@@ -384,19 +417,33 @@
   function renderGridStructure() {
     elements.gridInner.replaceChildren();
     elements.gridInner.style.setProperty("--row-height", `${state.rowHeight}px`);
-    elements.gridInner.style.setProperty("--col-width", `${state.colWidth}px`);
     elements.gridInner.style.setProperty("--cell-padding", state.compactGrid ? "2px" : "10px");
-    elements.gridInner.style.width = `${ROW_LABEL_WIDTH + state.colCount * state.colWidth}px`;
+    elements.gridInner.style.width = `${gridWidth()}px`;
     elements.gridInner.style.height = `${state.rowHeight + state.rowCount * state.rowHeight}px`;
     const header = document.createElement("div");
     header.className = "grid-header";
+    header.style.width = `${gridWidth()}px`;
     const corner = document.createElement("div");
     corner.className = "grid-corner";
     header.append(corner);
     for (let c = 0; c < state.colCount; c++) {
       const label = document.createElement("div");
       label.className = "grid-column";
-      label.textContent = columnName(c);
+      label.style.width = `${state.columnWidths[c]}px`;
+      label.dataset.col = String(c);
+      label.append(document.createTextNode(columnName(c)));
+      const handle = document.createElement("div");
+      handle.className = "column-resize-handle";
+      handle.dataset.col = String(c);
+      handle.title = `Drag to resize column ${columnName(c)}; double-click to fit contents`;
+      handle.setAttribute("aria-label", `Resize column ${columnName(c)}`);
+      handle.addEventListener("pointerdown", startColumnResize);
+      handle.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        autoFitColumn(c);
+      });
+      label.append(handle);
       header.append(label);
     }
     elements.gridInner.append(header);
@@ -418,7 +465,7 @@
       const row = document.createElement("div");
       row.className = "grid-row";
       row.style.top = `${state.rowHeight + r * state.rowHeight}px`;
-      row.style.width = `${ROW_LABEL_WIDTH + state.colCount * state.colWidth}px`;
+      row.style.width = `${gridWidth()}px`;
       const number = document.createElement("div");
       number.className = "grid-row-number";
       number.textContent = String(r + 1);
@@ -428,18 +475,19 @@
         const cell = state.sheet[address];
         const element = document.createElement("div");
         element.className = "grid-cell";
+        element.style.width = `${state.columnWidths[c]}px`;
+        element.dataset.row = String(r);
+        element.dataset.col = String(c);
         if (cell?.t === "n") element.classList.add("is-number");
         const fill = cellFillColor(cell);
         if (fill) element.style.setProperty("--cell-fill", fill);
-        if (state.selected.r === r && state.selected.c === c)
+        if (inSelection(r, c))
           element.classList.add("selected");
+        if (state.selected.r === r && state.selected.c === c)
+          element.classList.add("selection-focus");
         if (matchSet.has(address)) element.classList.add("search-hit");
         element.textContent = cellText(cell);
         element.title = cellText(cell);
-        element.addEventListener("click", () => {
-          elements.gridViewport.focus({ preventScroll: true });
-          selectCell(r, c, false);
-        });
         row.append(element);
       }
       fragment.append(row);
@@ -459,30 +507,136 @@
   function updateSelectionBar() {
     const address = `${columnName(state.selected.c)}${state.selected.r + 1}`;
     const cell = state.sheet?.[address];
-    $("cellAddress").textContent = address;
+    const bounds = selectionBounds();
+    const first = `${columnName(bounds.firstCol)}${bounds.firstRow + 1}`;
+    const last = `${columnName(bounds.lastCol)}${bounds.lastRow + 1}`;
+    const selectionAddress = first === last ? first : `${first}:${last}`;
+    $("cellAddress").textContent = selectionAddress;
+    $("cellAddress").title = selectionAddress;
     $("cellValue").textContent = cell?.f ? `=${cell.f}` : cellText(cell);
   }
 
-  function selectCell(r, c, scroll = true) {
+  function syncSelectionClasses() {
+    const bounds = selectionBounds();
+    for (const cell of elements.gridInner.querySelectorAll(".grid-cell")) {
+      const r = Number(cell.dataset.row);
+      const c = Number(cell.dataset.col);
+      cell.classList.toggle("selected", inSelection(r, c, bounds));
+      cell.classList.toggle(
+        "selection-focus",
+        r === state.selected.r && c === state.selected.c,
+      );
+    }
+  }
+
+  function selectCell(r, c, scroll = true, extend = false) {
     state.selected = {
       r: Math.max(0, Math.min(state.rowCount - 1, r)),
       c: Math.max(0, Math.min(state.colCount - 1, c)),
     };
+    if (!extend) state.selectionAnchor = { ...state.selected };
     updateSelectionBar();
+    syncSelectionClasses();
     if (scroll) {
       const vp = elements.gridViewport;
       const top = state.rowHeight + state.selected.r * state.rowHeight;
-      const left = ROW_LABEL_WIDTH + state.selected.c * state.colWidth;
+      const left = state.columnOffsets[state.selected.c];
+      const width = state.columnWidths[state.selected.c];
       if (top < vp.scrollTop + state.rowHeight)
         vp.scrollTop = Math.max(0, top - state.rowHeight * 2);
       else if (top + state.rowHeight > vp.scrollTop + vp.clientHeight)
         vp.scrollTop = top + state.rowHeight - vp.clientHeight;
       if (left < vp.scrollLeft + ROW_LABEL_WIDTH)
         vp.scrollLeft = Math.max(0, left - ROW_LABEL_WIDTH);
-      else if (left + state.colWidth > vp.scrollLeft + vp.clientWidth)
-        vp.scrollLeft = left + state.colWidth - vp.clientWidth;
+      else if (left + width > vp.scrollLeft + vp.clientWidth)
+        vp.scrollLeft = left + width - vp.clientWidth;
     }
-    scheduleRender();
+    if (scroll) scheduleRender();
+  }
+
+  function applyColumnWidth(c, width) {
+    state.columnWidths[c] = Math.max(
+      MIN_COL_WIDTH,
+      Math.min(MAX_COL_WIDTH, Math.round(width)),
+    );
+    rebuildColumnOffsets();
+    const totalWidth = `${gridWidth()}px`;
+    elements.gridInner.style.width = totalWidth;
+    elements.gridInner.querySelector(".grid-header").style.width = totalWidth;
+    for (const row of elements.gridInner.querySelectorAll(".grid-row"))
+      row.style.width = totalWidth;
+    const columnWidth = `${state.columnWidths[c]}px`;
+    for (const element of elements.gridInner.querySelectorAll(`[data-col="${c}"]`))
+      element.style.width = columnWidth;
+  }
+
+  function startColumnResize(event) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const c = Number(event.currentTarget.dataset.col);
+    resizeSession = { c, startX: event.clientX, startWidth: state.columnWidths[c] };
+    document.body.classList.add("resizing-column");
+  }
+
+  function autoFitColumn(c) {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    const sampleCell = elements.gridInner.querySelector(".grid-cell");
+    context.font = sampleCell ? getComputedStyle(sampleCell).font : "13px sans-serif";
+    let width = Math.max(MIN_COL_WIDTH, context.measureText(columnName(c)).width + 24);
+    for (const address of state.cellKeys) {
+      const coordinate = XLSX.utils.decode_cell(address);
+      if (coordinate.c !== c || coordinate.r >= state.rowCount) continue;
+      const value = cellText(state.sheet[address]).replace(/[\r\n\t]+/g, " ");
+      if (!value) continue;
+      width = Math.max(width, context.measureText(value).width + (state.compactGrid ? 5 : 21));
+      if (width >= MAX_COL_WIDTH) break;
+    }
+    applyColumnWidth(c, width);
+  }
+
+  function copySelection(event) {
+    if (!state.sheet) return;
+    const bounds = selectionBounds();
+    const cellCount =
+      (bounds.lastRow - bounds.firstRow + 1) *
+      (bounds.lastCol - bounds.firstCol + 1);
+    if (cellCount > 500000) {
+      event.preventDefault();
+      showToast("Select fewer than 500,000 cells to copy.", true);
+      return;
+    }
+    const rows = [];
+    for (let r = bounds.firstRow; r <= bounds.lastRow; r++) {
+      const values = [];
+      for (let c = bounds.firstCol; c <= bounds.lastCol; c++) {
+        const value = cellText(state.sheet[`${columnName(c)}${r + 1}`]);
+        values.push(
+          /[\t\r\n"]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value,
+        );
+      }
+      rows.push(values.join("\t"));
+    }
+    event.clipboardData.setData("text/plain", rows.join("\r\n"));
+    event.preventDefault();
+    showToast(`Copied ${countLabel(cellCount, "cell")}.`, false, 2000);
+  }
+
+  function cellAtPoint(clientX, clientY) {
+    const viewport = elements.gridViewport.getBoundingClientRect();
+    if (clientX < viewport.left + ROW_LABEL_WIDTH || clientX >= viewport.right ||
+        clientY < viewport.top + state.rowHeight || clientY >= viewport.bottom)
+      return null;
+    const inner = elements.gridInner.getBoundingClientRect();
+    const r = Math.floor((clientY - inner.top) / state.rowHeight) - 1;
+    const x = clientX - inner.left;
+    if (r < 0 || r >= state.rowCount || x < ROW_LABEL_WIDTH || x >= gridWidth())
+      return null;
+    let c = 0;
+    while (c < state.colCount && x >= state.columnOffsets[c + 1]) c++;
+    return c < state.colCount ? { r, c } : null;
   }
 
   function runSearch() {
@@ -538,6 +692,37 @@
     event.target.value = "";
   });
   elements.gridViewport.addEventListener("scroll", scheduleRender);
+  elements.gridViewport.addEventListener("pointerdown", (event) => {
+    if (!state.sheet || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const cell = cellAtPoint(event.clientX, event.clientY);
+    if (!cell) return;
+    event.preventDefault();
+    elements.gridViewport.focus({ preventScroll: true });
+    selectCell(cell.r, cell.c, false, event.shiftKey);
+    selectionDragging = true;
+  });
+  window.addEventListener("pointermove", (event) => {
+    if (resizeSession) {
+      applyColumnWidth(
+        resizeSession.c,
+        resizeSession.startWidth + event.clientX - resizeSession.startX,
+      );
+      return;
+    }
+    if (!selectionDragging) return;
+    const cell = cellAtPoint(event.clientX, event.clientY);
+    if (cell && (cell.r !== state.selected.r || cell.c !== state.selected.c))
+      selectCell(cell.r, cell.c, false, true);
+  });
+  function finishPointerInteraction() {
+    resizeSession = null;
+    selectionDragging = false;
+    document.body.classList.remove("resizing-column");
+  }
+  window.addEventListener("pointerup", finishPointerInteraction);
+  window.addEventListener("pointercancel", finishPointerInteraction);
+  window.addEventListener("blur", finishPointerInteraction);
+  elements.gridViewport.addEventListener("copy", copySelection);
   elements.gridViewport.addEventListener("keydown", (event) => {
     if (!state.sheet) return;
     const moves = {
@@ -549,7 +734,7 @@
     if (moves[event.key]) {
       event.preventDefault();
       const [dr, dc] = moves[event.key];
-      selectCell(state.selected.r + dr, state.selected.c + dc);
+      selectCell(state.selected.r + dr, state.selected.c + dc, true, event.shiftKey);
     }
   });
   elements.search.addEventListener("input", runSearch);

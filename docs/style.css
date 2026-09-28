@@ -508,7 +508,8 @@ input:focus-visible,
   background: #eaf7f4;
 }
 .formula-bar {
-  min-height: 40px;
+  height: 40px;
+  flex: none;
   display: flex;
   align-items: center;
   background: #f7faf9;
@@ -517,7 +518,9 @@ input:focus-visible,
   font-size: 13px;
 }
 .cell-address {
-  width: 83px;
+  min-width: 83px;
+  max-width: 200px;
+  width: max-content;
   flex: none;
   padding: 0 11px;
   align-self: stretch;
@@ -526,6 +529,7 @@ input:focus-visible,
   color: #176e65;
   font-weight: 740;
   border-right: 1px solid #dce5e8;
+  white-space: nowrap;
 }
 .formula-fx {
   padding: 0 12px;
@@ -537,7 +541,7 @@ input:focus-visible,
 .formula-value {
   flex: 1;
   min-width: 0;
-  max-height: 150px;
+  height: 39px;
   padding: 9px 12px 9px 0;
   overflow: auto;
   white-space: pre-wrap;
@@ -624,6 +628,7 @@ input:focus-visible,
 }
 .grid-header {
   height: var(--row-height, 34px);
+  min-width: 100%;
   position: sticky;
   top: 0;
   z-index: 5;
@@ -662,12 +667,31 @@ input:focus-visible,
   border-color: #d7e0e3;
 }
 .grid-column {
-  width: var(--col-width, 150px);
+  position: relative;
   justify-content: center;
   color: #677b87;
   font-size: 12px;
   font-weight: 700;
   border-right-color: #d7e0e3;
+  user-select: none;
+}
+.column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+.column-resize-handle:hover,
+body.resizing-column .column-resize-handle:hover {
+  background: #22a99255;
+}
+body.resizing-column,
+body.resizing-column * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 .grid-row {
   height: var(--row-height, 34px);
@@ -679,21 +703,22 @@ input:focus-visible,
   height: var(--row-height, 34px);
 }
 .grid-cell {
-  width: var(--col-width, 150px);
   padding: 0 var(--cell-padding, 10px);
   font-size: 13px;
   color: #263b4a;
   cursor: cell;
   background: var(--cell-fill, transparent);
+  user-select: none;
 }
 .grid-cell:hover {
   background: #f2faf8;
 }
 .grid-cell.selected {
   background: #e9f8f4;
+  box-shadow: inset 0 0 0 1px #86d3c4;
+}
+.grid-cell.selection-focus {
   box-shadow: inset 0 0 0 2px #22a992;
-  position: relative;
-  z-index: 2;
 }
 .grid-cell.search-hit {
   background: #fff0bd;

@@ -2,6 +2,12 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.8 — Grid resizing and range copy
+
+- Resize individual columns by dragging header dividers, or double-click to fit their contents.
+- Select rectangular cell ranges with the mouse or Shift+arrow keys and copy displayed values as tab-separated rows.
+- Preserve blank cells, tabs, quotes, and line breaks when copying a range.
+
 ## 0.1.7 — English Windows app identity
 
 - Use "Sheetview" for the executable, installer, and shortcut display names.

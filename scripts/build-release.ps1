@@ -11,7 +11,7 @@ $cargoManifest = Get-Content -LiteralPath (Join-Path $repoRoot 'src-tauri\Cargo.
 $version = $config.version
 $expectedKeyHash = 'eaecbb31a8e833c589fc4c32ba922b5e8627a8ff182ff0228b2c9a1dcb595507'
 
-if ($package.version -ne $version -or $cargoManifest -notmatch "(?m)^version = `"$([regex]::Escape($version))`"$") {
+if ($package.version -ne $version -or $cargoManifest -notmatch "(?m)^version = `"$([regex]::Escape($version))`"\r?$") {
     throw 'The Tauri, npm, and Cargo versions must match.'
 }
 $oldSigningKey = $env:TAURI_SIGNING_PRIVATE_KEY

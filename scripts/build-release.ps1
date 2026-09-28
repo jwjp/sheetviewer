@@ -1,5 +1,6 @@
 param(
-    [string]$SigningKeyPath = (Join-Path $HOME '.tauri\sheetview.key')
+    [string]$SigningKeyPath = (Join-Path $HOME '.tauri\sheetview.key'),
+    [switch]$UseEnvironmentKey
 )
 
 $ErrorActionPreference = 'Stop'
@@ -8,26 +9,44 @@ $config = Get-Content -LiteralPath (Join-Path $repoRoot 'src-tauri\tauri.conf.js
 $package = Get-Content -LiteralPath (Join-Path $repoRoot 'package.json') -Raw | ConvertFrom-Json
 $cargoManifest = Get-Content -LiteralPath (Join-Path $repoRoot 'src-tauri\Cargo.toml') -Raw
 $version = $config.version
+$expectedKeyHash = 'eaecbb31a8e833c589fc4c32ba922b5e8627a8ff182ff0228b2c9a1dcb595507'
 
 if ($package.version -ne $version -or $cargoManifest -notmatch "(?m)^version = `"$([regex]::Escape($version))`"$") {
     throw 'The Tauri, npm, and Cargo versions must match.'
 }
-if (-not (Test-Path -LiteralPath $SigningKeyPath -PathType Leaf)) {
-    throw "Signing key was not found at $SigningKeyPath"
-}
-$publicKeyPath = "$SigningKeyPath.pub"
-if (-not (Test-Path -LiteralPath $publicKeyPath -PathType Leaf)) {
-    throw "Public key was not found at $publicKeyPath"
-}
-$publicKey = (Get-Content -LiteralPath $publicKeyPath -Raw).Trim()
-if ($config.plugins.updater.pubkey -ne $publicKey) {
-    throw 'The signing key does not match the updater public key in tauri.conf.json.'
-}
-
 $oldSigningKey = $env:TAURI_SIGNING_PRIVATE_KEY
 $oldSigningPassword = $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 try {
-    $env:TAURI_SIGNING_PRIVATE_KEY = (Resolve-Path -LiteralPath $SigningKeyPath).Path
+    if ($UseEnvironmentKey) {
+        if ([string]::IsNullOrWhiteSpace($oldSigningKey)) {
+            throw 'TAURI_SIGNING_PRIVATE_KEY is empty.'
+        }
+        $keyContent = $oldSigningKey.Trim()
+        $env:TAURI_SIGNING_PRIVATE_KEY = $keyContent
+    } else {
+        if (-not (Test-Path -LiteralPath $SigningKeyPath -PathType Leaf)) {
+            throw "Signing key was not found at $SigningKeyPath"
+        }
+        $publicKeyPath = "$SigningKeyPath.pub"
+        if (-not (Test-Path -LiteralPath $publicKeyPath -PathType Leaf)) {
+            throw "Public key was not found at $publicKeyPath"
+        }
+        $publicKey = (Get-Content -LiteralPath $publicKeyPath -Raw).Trim()
+        if ($config.plugins.updater.pubkey -ne $publicKey) {
+            throw 'The signing key does not match the updater public key in tauri.conf.json.'
+        }
+        $keyContent = (Get-Content -LiteralPath $SigningKeyPath -Raw).Trim()
+        $env:TAURI_SIGNING_PRIVATE_KEY = (Resolve-Path -LiteralPath $SigningKeyPath).Path
+    }
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $keyHash = [Convert]::ToHexString($sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($keyContent))).ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+    if ($keyHash -ne $expectedKeyHash) {
+        throw 'The signing key does not match the key used by existing app releases.'
+    }
     if ($null -eq $oldSigningPassword) {
         $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
     }

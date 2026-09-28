@@ -61,9 +61,11 @@ The installed app checks GitHub Releases when it starts. If a newer version exis
 
 ## Publish a Windows update
 
-Tauri update signatures are separate from Windows code signing. Create the update signing key pair once with `npm run tauri -- signer generate -w "$HOME/.tauri/sheetview.key"`. Put the generated public key in `src-tauri/tauri.conf.json`; keep the private key outside the repository and back it up securely. The committed public key must match the key used for every later release. No signing service account is required for this step.
+Tauri update signatures are separate from Windows code signing. The updater public key is committed in `src-tauri/tauri.conf.json`. The matching private key is stored as the `TAURI_SIGNING_PRIVATE_KEY` secret in the GitHub Actions `release` environment, with a separate secure backup. Keep using this key for later releases; losing it prevents existing installations from accepting new updates. Never commit the private key.
 
-On a Windows build machine, set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the environment if you gave the private key a password, then run `./scripts/build-release.ps1`. The script checks the key and version, builds a signed NSIS installer, and stages the installer, `.sig`, `latest.json`, and SHA-256 checksum in `.release/v<version>/`. Upload all four files to a GitHub release tagged `v<version>` and make it the latest release. The app reads `latest.json` from the latest GitHub release. Do not commit the private key or release staging directory.
+To prepare a release, update the version in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`, then commit and push to `main`. In GitHub Actions, run **Windows release** on `main`. Leave **Publish** off for a signed test build, or turn it on to publish the installer, `.sig`, `latest.json`, and SHA-256 checksum as the latest GitHub release. The app reads `latest.json` from that release. The signing key is only provided to the Windows release job; it is not needed on a maintainer's PC.
+
+For a local release build with a temporary copy of the existing key, run `./scripts/build-release.ps1 -SigningKeyPath <path>`. The script checks the key fingerprint before signing and writes the release assets to `.release/v<version>/`. Do not generate a replacement key for this purpose.
 
 The current installer is unsigned, so Windows SmartScreen may show a warning. Check the publisher and file hash on GitHub Releases before installing.
 

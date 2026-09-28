@@ -60,9 +60,11 @@ npm run desktop:build
 
 ## Windows 업데이트 배포
 
-Tauri 업데이트 서명은 Windows 코드 서명과 별개입니다. `npm run tauri -- signer generate -w "$HOME/.tauri/sheetview.key"`로 업데이트용 키 쌍을 한 번 생성합니다. 공개키는 `src-tauri/tauri.conf.json`에 넣고, 개인키는 저장소 밖에 보관하고 안전하게 백업하세요. 이후 릴리스도 같은 개인키를 사용해야 합니다. 이 과정에 서명 서비스 가입은 필요하지 않습니다.
+Tauri 업데이트 서명은 Windows 코드 서명과 별개입니다. 업데이트용 공개키는 `src-tauri/tauri.conf.json`에 들어 있습니다. 일치하는 개인키는 GitHub Actions의 `release` 환경 비밀값 `TAURI_SIGNING_PRIVATE_KEY`에 보관하며, 별도의 안전한 백업도 필요합니다. 이후 버전에도 같은 키를 사용해야 합니다. 개인키를 잃으면 기존 설치 앱이 새 업데이트를 받아들이지 못합니다. 개인키는 Git에 올리지 마세요.
 
-Windows 빌드 PC에서 개인키에 암호를 설정했다면 환경 변수 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`를 지정하고 `./scripts/build-release.ps1`을 실행하세요. 스크립트가 키와 버전을 확인한 뒤 NSIS 설치 파일, `.sig`, `latest.json`, SHA-256 체크섬을 `.release/v<버전>/`에 준비합니다. 네 파일을 `v<버전>` 태그의 GitHub 릴리스에 올리고 최신 릴리스로 지정하면 앱이 `latest.json`을 읽습니다. 개인키나 릴리스 준비 폴더는 Git에 올리지 마세요.
+새 버전을 배포하려면 `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`의 버전을 올리고 `main`에 푸시하세요. GitHub Actions의 **Windows release**를 `main`에서 실행합니다. **Publish**를 끄면 서명된 테스트 빌드만 만들고, 켜면 설치 파일·`.sig`·`latest.json`·SHA-256 체크섬을 최신 GitHub 릴리스로 게시합니다. 앱은 이 릴리스의 `latest.json`을 확인합니다. 빌드 PC에는 개인키가 필요하지 않습니다.
+
+기존 키를 임시로 사용해 로컬에서 릴리스를 빌드해야 한다면 `./scripts/build-release.ps1 -SigningKeyPath <경로>`를 실행하세요. 스크립트가 키 지문을 확인한 뒤 `.release/v<버전>/`에 배포 파일을 만듭니다. 이 용도로 새 키를 생성하면 안 됩니다.
 
 현재 배포 파일에는 코드 서명이 적용되지 않았습니다. Windows에서 SmartScreen 경고가 나타날 수 있으므로 GitHub Releases의 게시자와 파일 해시를 확인하세요.
 

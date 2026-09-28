@@ -2,6 +2,13 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.9 — Row sizing and whole-data selection
+
+- Keep cell selections when the horizontal scrollbar is clicked.
+- Select column or row data from its header; Ctrl+A selects the sheet's data range.
+- Resize individual rows by dragging their number dividers, or double-click to fit wrapped content.
+- Explain the 500,000-cell copy limit in the app and documentation.
+
 ## 0.1.8 — Grid resizing and range copy
 
 - Resize individual columns by dragging header dividers, or double-click to fit their contents.

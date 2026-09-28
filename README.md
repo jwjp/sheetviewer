@@ -25,7 +25,8 @@ We audited 95 valid `.cell` documents in a HanCell 2016 folder. Every document's
 ## Features
 
 - Switch sheets, select cells, and inspect formulas
-- Drag a column header divider to resize it, or double-click the divider to fit its contents
+- Drag a column or row header divider to resize it, or double-click the divider to fit its contents
+- Click a column or row header to select its data, or press Ctrl+A to select the sheet's data range
 - Drag across cells or use Shift+click / Shift+arrow keys to select a range; press Ctrl+C to copy displayed values as a table into Excel or another spreadsheet
 - View embedded images and drawing text by sheet in HanCell documents
 - Show solid cell fills and use a compact grid for color-based documents
@@ -37,6 +38,8 @@ We audited 95 valid `.cell` documents in a HanCell 2016 folder. Every document's
 - Download verified app updates automatically and install them from the app
 
 Files are limited to 30 MB, and the viewer displays up to the first 100,000 rows and 200 columns. Formulas are not recalculated; the viewer displays values saved in the file. Charts show a placeholder instead of a rendered graph. Pattern fills, textless shapes, pivot tables, and exact source formatting and placement are not rendered. Macros are never executed.
+
+Copying is limited to 500,000 cells at a time because clipboard text must be assembled synchronously; larger ranges could freeze the app or use excessive memory. Selection itself is not limited to 500,000 cells. Copy smaller ranges in multiple passes when needed. Clipboard output contains displayed values and positions, not cell formatting.
 
 ## Run locally
 

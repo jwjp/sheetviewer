@@ -2,6 +2,12 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.4 — In-app updates
+
+- Check GitHub Releases for new desktop versions at startup and on demand.
+- Download and verify signed updates automatically, then offer in-app installation.
+- Add a release script that prepares the NSIS installer, update signature, manifest, and checksum.
+
 ## 0.1.3 — Windows file associations
 
 - Registered supported spreadsheet formats as Windows **Open with** options in the installer.

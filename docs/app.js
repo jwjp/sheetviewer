@@ -34,6 +34,10 @@
     sheetObjects: $("sheetObjects"),
     sheetObjectsSummary: $("sheetObjectsSummary"),
     sheetObjectList: $("sheetObjectList"),
+    updateCheck: $("updateCheckButton"),
+    updateBanner: $("updateBanner"),
+    updateMessage: $("updateMessage"),
+    updateInstall: $("updateInstallButton"),
   };
   const state = {
     workbook: null,
@@ -591,6 +595,69 @@
       console.error("Failed to open the file passed to the app:", error);
       showToast("연결된 파일을 열지 못했습니다. 파일이 있는지 확인해 주세요.", true, 7000);
     }
+  }
+
+  let updateBusy = false;
+  async function prepareUpdate(manual = false) {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke || updateBusy) return;
+    updateBusy = true;
+    elements.updateCheck.disabled = true;
+    elements.updateCheck.textContent = "업데이트 확인 중…";
+    try {
+      const version = await invoke("prepare_update");
+      if (version) {
+        elements.updateMessage.textContent =
+          `새 버전 ${version}의 다운로드와 검증이 완료되었습니다.`;
+        elements.updateInstall.classList.remove("hidden");
+        elements.updateBanner.classList.remove("hidden");
+      } else {
+        elements.updateBanner.classList.add("hidden");
+        if (manual) showToast("현재 최신 버전입니다.");
+      }
+    } catch (error) {
+      console.error("Update check or download failed:", error);
+      if (manual)
+        showToast(
+          "업데이트를 확인하거나 내려받지 못했습니다. 인터넷 연결을 확인해 주세요.",
+          true,
+          7000,
+        );
+    } finally {
+      updateBusy = false;
+      elements.updateCheck.disabled = false;
+      elements.updateCheck.textContent = "업데이트 확인";
+    }
+  }
+
+  async function installUpdate() {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke || updateBusy) return;
+    updateBusy = true;
+    elements.updateCheck.disabled = true;
+    elements.updateInstall.disabled = true;
+    elements.updateMessage.textContent = "업데이트를 설치하고 앱을 다시 시작합니다…";
+    try {
+      await invoke("install_update");
+    } catch (error) {
+      console.error("Update installation failed:", error);
+      elements.updateMessage.textContent =
+        "업데이트 설치에 실패했습니다. 다시 시도할 수 있습니다.";
+      showToast("업데이트를 설치하지 못했습니다.", true, 7000);
+      updateBusy = false;
+      elements.updateCheck.disabled = false;
+      elements.updateInstall.disabled = false;
+    }
+  }
+
+  if (window.__TAURI__?.core?.invoke) {
+    elements.updateCheck.classList.remove("hidden");
+    elements.updateCheck.addEventListener("click", () => prepareUpdate(true));
+    elements.updateInstall.addEventListener("click", installUpdate);
+    $("updateDismissButton").addEventListener("click", () => {
+      elements.updateBanner.classList.add("hidden");
+    });
+    prepareUpdate();
   }
 
   openStartupFile();

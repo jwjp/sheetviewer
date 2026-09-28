@@ -30,6 +30,7 @@ We audited 95 valid `.cell` documents in a HanCell 2016 folder. Every document's
 - Detect common CSV delimiters and Korean text encodings
 - Use the web version without installing anything, or use the Windows app offline
 - Open a supported file from Windows Explorer with Sheetview
+- Download verified app updates automatically and install them from the app
 
 Files are limited to 30 MB, and the viewer displays up to the first 100,000 rows and 200 columns. Formulas are not recalculated; the viewer displays values saved in the file. Charts show a placeholder instead of a rendered graph. Pattern fills, textless shapes, pivot tables, and exact source formatting and placement are not rendered. Macros are never executed.
 
@@ -52,7 +53,15 @@ npm ci
 npm run desktop:build
 ```
 
-The Windows installer (`-setup.exe`) is written to `src-tauri/target/release/bundle/nsis/`. The app embeds the same `docs` files as the web version. To regenerate the icons, install Pillow and run `python scripts/generate_icons.py`.
+The Windows installer (`-setup.exe`) is written to `src-tauri/target/release/bundle/nsis/`. This local build does not create update signatures; use the release script below for a signed update. The app embeds the same `docs` files as the web version. To regenerate the icons, install Pillow and run `python scripts/generate_icons.py`.
+
+The installed app checks GitHub Releases when it starts. If a newer version exists, it downloads and verifies the update, then offers an **Install update** button. You can also select **Check for updates** in the app. The first updater-enabled release must be installed manually by users of version 0.1.3 or earlier.
+
+## Publish a Windows update
+
+Tauri update signatures are separate from Windows code signing. Create the update signing key pair once with `npm run tauri -- signer generate -w "$HOME/.tauri/sheetview.key"`. Put the generated public key in `src-tauri/tauri.conf.json`; keep the private key outside the repository and back it up securely. The committed public key must match the key used for every later release. No signing service account is required for this step.
+
+On a Windows build machine, set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the environment if you gave the private key a password, then run `./scripts/build-release.ps1`. The script checks the key and version, builds a signed NSIS installer, and stages the installer, `.sig`, `latest.json`, and SHA-256 checksum in `.release/v<version>/`. Upload all four files to a GitHub release tagged `v<version>` and make it the latest release. The app reads `latest.json` from the latest GitHub release. Do not commit the private key or release staging directory.
 
 The current installer is unsigned, so Windows SmartScreen may show a warning. Check the publisher and file hash on GitHub Releases before installing.
 

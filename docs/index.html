@@ -31,6 +31,13 @@
         <span class="topbar-divider"></span>
         <span class="topbar-caption">스프레드시트 뷰어</span>
         <span class="topbar-spacer"></span>
+        <button
+          class="button top-update hidden"
+          id="updateCheckButton"
+          type="button"
+        >
+          업데이트 확인
+        </button>
         <span class="privacy-note"
           ><span class="privacy-dot"></span> 파일은 이 기기에서만
           처리됩니다</span
@@ -48,6 +55,29 @@
           파일 열기
         </button>
       </header>
+
+      <div
+        class="update-banner hidden"
+        id="updateBanner"
+        role="status"
+        aria-live="polite"
+      >
+        <span id="updateMessage"></span>
+        <button
+          class="button button-primary hidden"
+          id="updateInstallButton"
+          type="button"
+        >
+          업데이트 설치
+        </button>
+        <button
+          class="button update-dismiss"
+          id="updateDismissButton"
+          type="button"
+        >
+          나중에
+        </button>
+      </div>
 
       <main class="main" id="main">
         <section

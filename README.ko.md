@@ -29,6 +29,7 @@ Windows 설치 프로그램은 `.csv`, `.tsv`, `.xlsx`, `.xls`, `.xlsm`, `.xlsb`
 - 큰 시트를 위한 세로 가상 스크롤
 - 한국어 CSV 인코딩 자동 판별, 탭/세미콜론/파이프 구분자 감지
 - 웹 버전은 설치 없이, Windows 앱은 오프라인에서 사용 가능
+- 앱 업데이트를 자동으로 내려받아 검증하고 앱 안에서 설치
 
 현재 한 파일 최대 30MB, 화면 표시 범위는 첫 100,000행 × 200열입니다. 수식은 재계산하지 않고 파일에 저장된 값을 표시합니다. 차트는 자리만 안내하며 그래프를 그리지 않습니다. 무늬 채우기, 텍스트가 없는 도형, 피벗 테이블, 원본 서식과 정확한 배치는 표시하지 않습니다. 악성 문서의 매크로는 실행하지 않습니다.
 
@@ -51,7 +52,15 @@ npm ci
 npm run desktop:build
 ```
 
-완료되면 `src-tauri/target/release/bundle/nsis/`에 Windows 설치 파일(`-setup.exe`)이 생성됩니다. 앱 화면은 웹 버전과 동일한 `docs` 파일을 내장합니다. 아이콘을 변경하려면 Pillow를 설치한 뒤 `python scripts/generate_icons.py`를 실행하세요.
+완료되면 `src-tauri/target/release/bundle/nsis/`에 Windows 설치 파일(`-setup.exe`)이 생성됩니다. 이 로컬 빌드에는 업데이트 서명이 포함되지 않으므로 업데이트 배포에는 아래 릴리스 스크립트를 사용하세요. 앱 화면은 웹 버전과 동일한 `docs` 파일을 내장합니다. 아이콘을 변경하려면 Pillow를 설치한 뒤 `python scripts/generate_icons.py`를 실행하세요.
+
+설치 앱은 실행할 때 GitHub Releases에서 새 버전을 확인합니다. 새 버전이 있으면 자동으로 내려받아 서명을 검증한 뒤 **업데이트 설치** 버튼을 표시합니다. 앱의 **업데이트 확인** 버튼으로 직접 확인할 수도 있습니다. 0.1.3 이하 버전을 사용 중이라면 업데이트 기능이 들어간 첫 버전은 한 번 직접 설치해야 합니다.
+
+## Windows 업데이트 배포
+
+Tauri 업데이트 서명은 Windows 코드 서명과 별개입니다. `npm run tauri -- signer generate -w "$HOME/.tauri/sheetview.key"`로 업데이트용 키 쌍을 한 번 생성합니다. 공개키는 `src-tauri/tauri.conf.json`에 넣고, 개인키는 저장소 밖에 보관하고 안전하게 백업하세요. 이후 릴리스도 같은 개인키를 사용해야 합니다. 이 과정에 서명 서비스 가입은 필요하지 않습니다.
+
+Windows 빌드 PC에서 개인키에 암호를 설정했다면 환경 변수 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`를 지정하고 `./scripts/build-release.ps1`을 실행하세요. 스크립트가 키와 버전을 확인한 뒤 NSIS 설치 파일, `.sig`, `latest.json`, SHA-256 체크섬을 `.release/v<버전>/`에 준비합니다. 네 파일을 `v<버전>` 태그의 GitHub 릴리스에 올리고 최신 릴리스로 지정하면 앱이 `latest.json`을 읽습니다. 개인키나 릴리스 준비 폴더는 Git에 올리지 마세요.
 
 현재 배포 파일에는 코드 서명이 적용되지 않았습니다. Windows에서 SmartScreen 경고가 나타날 수 있으므로 GitHub Releases의 게시자와 파일 해시를 확인하세요.
 

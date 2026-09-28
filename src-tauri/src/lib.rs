@@ -1,6 +1,10 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
-use tauri::{ipc::Response, State};
+use tauri::{ipc::Response, Manager, State};
+use tauri_plugin_updater::{Update, UpdaterExt};
 
 const MAX_FILE_BYTES: u64 = 30 * 1024 * 1024;
 const SUPPORTED_EXTENSIONS: &[&str] = &[
@@ -8,6 +12,7 @@ const SUPPORTED_EXTENSIONS: &[&str] = &[
 ];
 
 struct StartupFile(Option<PathBuf>);
+struct ReadyUpdate(Mutex<Option<(Update, Vec<u8>)>>);
 
 fn supported_file(path: &Path) -> bool {
     path.extension()
@@ -41,6 +46,32 @@ fn read_startup_file(state: State<'_, StartupFile>) -> Result<Response, String> 
     Ok(Response::new(bytes))
 }
 
+#[tauri::command]
+async fn prepare_update(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let updater = app.updater().map_err(|error| error.to_string())?;
+    let Some(update) = updater.check().await.map_err(|error| error.to_string())? else {
+        return Ok(None);
+    };
+
+    let bytes = update
+        .download(|_, _| {}, || {})
+        .await
+        .map_err(|error| error.to_string())?;
+    let version = update.version.clone();
+    let ready = app.state::<ReadyUpdate>();
+    *ready.0.lock().map_err(|error| error.to_string())? = Some((update, bytes));
+    Ok(Some(version))
+}
+
+#[tauri::command]
+fn install_update(state: State<'_, ReadyUpdate>) -> Result<(), String> {
+    let mut ready = state.0.lock().map_err(|error| error.to_string())?;
+    let (update, bytes) = ready.as_ref().ok_or("No update has been downloaded")?;
+    update.install(bytes).map_err(|error| error.to_string())?;
+    *ready = None;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let startup_file = std::env::args_os()
@@ -49,9 +80,13 @@ pub fn run() {
         .find(|path| supported_file(path));
     tauri::Builder::default()
         .manage(StartupFile(startup_file))
+        .manage(ReadyUpdate(Mutex::new(None)))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             startup_file_name,
-            read_startup_file
+            read_startup_file,
+            prepare_update,
+            install_update
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Sheetview");

@@ -500,6 +500,7 @@
       handle.addEventListener("dblclick", (event) => {
         event.preventDefault();
         event.stopPropagation();
+        finishPointerInteraction();
         autoFitColumn(c);
       });
       label.append(handle);
@@ -553,6 +554,7 @@
       handle.addEventListener("dblclick", (event) => {
         event.preventDefault();
         event.stopPropagation();
+        finishPointerInteraction();
         autoFitRow(r);
       });
       number.append(handle);
@@ -936,6 +938,11 @@
   });
   window.addEventListener("pointermove", (event) => {
     if (resizeSession) {
+      // Recover if the release happened outside the window or was not delivered.
+      if (event.buttons === 0) {
+        finishPointerInteraction();
+        return;
+      }
       const distance = resizeSession.kind === "column"
         ? event.clientX - resizeSession.start
         : event.clientY - resizeSession.start;

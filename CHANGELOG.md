@@ -2,6 +2,10 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.13 — Installed app publisher
+
+- Show Sheetview instead of github as the publisher in Windows Installed apps.
+
 ## 0.1.12 — Column header selection after resizing
 
 - Keep the resize handle at its intended width when a column is resized or fitted to its contents.

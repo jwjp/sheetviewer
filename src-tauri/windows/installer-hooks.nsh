@@ -46,6 +46,8 @@
   WriteRegStr SHCTX "Software\Classes\Applications\${MAINBINARYNAME}.exe" "FriendlyAppName" "${SHEETVIEW_DISPLAYNAME}"
   WriteRegStr SHCTX "Software\Classes\Applications\${MAINBINARYNAME}.exe\shell\open\command" "" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%1$\""
   WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "${SHEETVIEW_DISPLAYNAME}"
+  ; Keep the existing manufacturer registry path for updates, but show Sheetview in Installed apps.
+  WriteRegStr SHCTX "${UNINSTKEY}" "Publisher" "${SHEETVIEW_DISPLAYNAME}"
   ; Migrate shortcuts made by earlier installers.
   !insertmacro MUI_STARTMENU_GETFOLDER Application $AppStartMenuFolder
   !insertmacro SHEETVIEW_RENAME_SHORTCUT "$SMPROGRAMS\$AppStartMenuFolder"

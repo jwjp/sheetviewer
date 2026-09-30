@@ -2,6 +2,11 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.11 — Header resize fix
+
+- Release header resizing after double-clicking a divider to fit its contents.
+- Recover if the pointer release event is missed, so normal grid interaction resumes.
+
 ## 0.1.10 — Header range selection
 
 - Drag across column headers to select all data in those columns.

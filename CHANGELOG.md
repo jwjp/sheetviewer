@@ -2,6 +2,11 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.12 — Column header selection after resizing
+
+- Keep the resize handle at its intended width when a column is resized or fitted to its contents.
+- Restore normal column selection across the header after resizing.
+
 ## 0.1.11 — Header resize fix
 
 - Release header resizing after double-clicking a divider to fit its contents.

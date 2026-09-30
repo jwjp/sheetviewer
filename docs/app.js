@@ -720,7 +720,9 @@
     for (const row of elements.gridInner.querySelectorAll(".grid-row"))
       row.style.width = totalWidth;
     const columnWidth = `${state.columnWidths[c]}px`;
-    for (const element of elements.gridInner.querySelectorAll(`[data-col="${c}"]`))
+    for (const element of elements.gridInner.querySelectorAll(
+      `.grid-column[data-col="${c}"], .grid-cell[data-col="${c}"]`,
+    ))
       element.style.width = columnWidth;
   }
 

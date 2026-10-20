@@ -72,6 +72,12 @@
     renderPending: false,
     objectsBySheet: [],
     objectUrls: [],
+    stylesBySheet: [],
+    rowStylesBySheet: [],
+    columnStylesBySheet: [],
+    richTextBySheet: [],
+    conditionalRulesBySheet: [],
+    defaultCellStyle: {},
   };
   let toastTimer = 0;
   let dragDepth = 0;
@@ -252,8 +258,8 @@
           cellText: true,
           // HanCell rich text can include hs:size, which SheetJS cannot render as HTML.
           cellHTML: false,
-          cellStyles: ext === "cell",
-          bookFiles: ext === "cell",
+          cellStyles: true,
+          bookFiles: ["xlsx", "xlsm", "cell"].includes(ext),
         });
       }
       if (!workbook.SheetNames || workbook.SheetNames.length === 0)
@@ -266,9 +272,23 @@
           console.warn("Failed to read embedded objects:", error);
         }
       }
+      let cellStyles = null;
+      if (["xlsx", "xlsm", "cell"].includes(ext)) {
+        try {
+          cellStyles = window.CellStyles.extract(workbook);
+        } catch (error) {
+          console.warn("Failed to read workbook formatting:", error);
+        }
+      }
       state.objectUrls.forEach((url) => URL.revokeObjectURL(url));
       state.objectsBySheet = objects.sheets;
       state.objectUrls = objects.urls;
+      state.stylesBySheet = cellStyles?.sheets || [];
+      state.rowStylesBySheet = cellStyles?.rowStyles || [];
+      state.columnStylesBySheet = cellStyles?.columnStyles || [];
+      state.richTextBySheet = cellStyles?.richText || [];
+      state.conditionalRulesBySheet = cellStyles?.conditionalRules || [];
+      state.defaultCellStyle = cellStyles?.defaultStyle || {};
       state.file = file;
       state.workbook = workbook;
       state.activeIndex = 0;
@@ -328,7 +348,11 @@
       maxRow = Math.max(maxRow, address.r);
       maxCol = Math.max(maxCol, address.c);
       if (cellText(state.sheet[key])) state.valueCellCount++;
-      if (cellFillColor(state.sheet[key])) state.filledCellCount++;
+      const formatting = formattingAt(key, address.r, address.c, state.sheet[key]);
+      if (cellFillColor(state.sheet[key]) || formatting?.backgroundColor ||
+          (formatting?.backgroundPattern && formatting.backgroundPattern !== "none") ||
+          formatting?.backgroundBar)
+        state.filledCellCount++;
     }
     if (maxRow < 0 && state.sheet["!ref"]) {
       try {
@@ -355,7 +379,41 @@
     state.rowCount = Math.min(MAX_ROWS, Math.max(30, state.actualRows));
     state.colCount = Math.min(MAX_COLS, Math.max(12, state.actualCols));
     initializeRowOffsets();
+    const sourceRows = state.sheet["!rows"] || [];
+    for (let r = 0; r < Math.min(state.rowCount, sourceRows.length); r++) {
+      const height = sourceRows[r]?.hpt > 0
+        ? Number(sourceRows[r].hpt) * 4 / 3
+        : Number(sourceRows[r]?.hpx);
+      if (height > 0) state.rowHeights[r] = Math.max(MIN_ROW_HEIGHT, Math.min(MAX_ROW_HEIGHT, Math.round(height)));
+    }
     state.columnWidths = Array(state.colCount).fill(compactGrid ? 26 : COL_WIDTH);
+    const sourceColumns = state.sheet["!cols"] || [];
+    for (let c = 0; c < Math.min(state.colCount, sourceColumns.length); c++) {
+      const width = sourceColumns[c]?.wpx > 0
+        ? Number(sourceColumns[c].wpx)
+        : Number(sourceColumns[c]?.wch) * 7 + 5;
+      if (width > 0) state.columnWidths[c] = Math.max(MIN_COL_WIDTH, Math.min(MAX_COL_WIDTH, Math.round(width)));
+    }
+    const measure = document.createElement("canvas").getContext("2d");
+    if (measure) for (const key of state.cellKeys) {
+      const { r, c } = XLSX.utils.decode_cell(key);
+      if (r >= state.rowCount || c >= state.colCount || sourceRows[r]?.hpt > 0 || sourceRows[r]?.hpx > 0) continue;
+      const formatting = formattingAt(key, r, c, state.sheet[key]);
+      if (formatting?.whiteSpace !== "pre-wrap") continue;
+      const value = cellText(state.sheet[key]);
+      if (!value) continue;
+      const size = formatting.fontSize?.endsWith("pt")
+        ? parseFloat(formatting.fontSize) * 4 / 3 : parseFloat(formatting.fontSize) || 13;
+      measure.font = `${formatting.fontStyle || "normal"} ${formatting.fontWeight || "400"} ${size}px ${formatting.fontFamily || "sans-serif"}`;
+      const available = Math.max(1, state.columnWidths[c] - 20);
+      const lines = value.split(/\r\n|\r|\n/).reduce((count, line) =>
+        count + Math.max(1, Math.ceil(measure.measureText(line).width / available)), 0);
+      state.rowHeights[r] = Math.min(MAX_ROW_HEIGHT,
+        Math.max(state.rowHeights[r], Math.ceil(lines * size * 1.4 + 12)));
+    }
+    state.rowOffsets = [state.rowHeight];
+    for (const height of state.rowHeights)
+      state.rowOffsets.push(state.rowOffsets.at(-1) + height);
     rebuildColumnOffsets();
     state.selected = { r: 0, c: 0 };
     state.selectionAnchor = { r: 0, c: 0 };
@@ -509,9 +567,82 @@
     elements.gridInner.append(header);
   }
 
+  function formattingAt(address, r, c, cell) {
+    const base = state.stylesBySheet[state.activeIndex]?.get(address) ||
+      state.rowStylesBySheet[state.activeIndex]?.get(r) ||
+      state.columnStylesBySheet[state.activeIndex]?.get(c) ||
+      state.defaultCellStyle;
+    const conditional = window.CellStyles.conditionalFormats(
+      state.conditionalRulesBySheet[state.activeIndex], r, c, cell,
+    );
+    return conditional ? { ...base, ...conditional } : base;
+  }
+
+  function createGridCell(r, c, matchSet, bounds) {
+    const address = `${columnName(c)}${r + 1}`;
+    const cell = state.sheet[address];
+    const value = cellText(cell);
+    const element = document.createElement("div");
+    element.className = "grid-cell";
+    element.style.width = `${state.columnWidths[c]}px`;
+    element.dataset.row = String(r);
+    element.dataset.col = String(c);
+    if (cell?.t === "n") element.classList.add("is-number");
+    const fill = cellFillColor(cell);
+    if (fill) element.style.setProperty("--cell-fill", fill);
+    const formatting = formattingAt(address, r, c, cell);
+    for (const [property, item] of Object.entries(formatting || {})) {
+      if (property === "backgroundColor") element.style.setProperty("--cell-fill", item);
+      else if (property === "backgroundPattern") element.style.setProperty("--cell-pattern", item);
+      else if (property === "backgroundBar") element.style.setProperty("--cell-databar", item);
+      else if (property === "diagonalUp") element.style.setProperty("--cell-diagonal-up", item);
+      else if (property === "diagonalDown") element.style.setProperty("--cell-diagonal-down", item);
+      else if (["rotation", "shrinkToFit", "icon", "iconColor", "hideValue"].includes(property)) continue;
+      else element.style[property] = item;
+    }
+    if (inSelection(r, c, bounds)) element.classList.add("selected");
+    if (state.selected.r === r && state.selected.c === c)
+      element.classList.add("selection-focus");
+    if (matchSet.has(address)) element.classList.add("search-hit");
+    const content = document.createElement("span");
+    content.className = "cell-content";
+    if (formatting?.icon) {
+      const icon = document.createElement("span");
+      icon.className = "cell-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.style.color = formatting.iconColor;
+      icon.textContent = formatting.icon;
+      content.append(icon);
+    }
+    const runs = state.richTextBySheet[state.activeIndex]?.get(address);
+    if (formatting?.hideValue) {
+      // Icon-only conditional formatting still keeps the value in the formula bar.
+    } else if (runs && runs.map((run) => run.text).join("") === value) {
+      for (const run of runs) {
+        const part = document.createElement("span");
+        part.textContent = run.text;
+        for (const [property, item] of Object.entries(run.style)) part.style[property] = item;
+        content.append(part);
+      }
+    } else content.append(document.createTextNode(value));
+    if (formatting?.rotation) {
+      content.style.width = "max-content";
+      content.style.whiteSpace = "nowrap";
+      content.style.justifySelf = "center";
+      content.style.alignSelf = "center";
+      content.style.transform = `rotate(${formatting.rotation}deg)`;
+      content.style.transformOrigin = "center";
+    }
+    if (formatting?.shrinkToFit && !formatting?.rotation)
+      element.classList.add("shrink-fit");
+    element.append(content);
+    element.title = value;
+    return element;
+  }
+
   function renderRows() {
     elements.gridInner
-      .querySelectorAll(".grid-row")
+      .querySelectorAll(".grid-row, .grid-merge")
       .forEach((row) => row.remove());
     const viewport = elements.gridViewport;
     const first = Math.max(0, rowAtOffset(viewport.scrollTop) - 8);
@@ -522,6 +653,15 @@
     const fragment = document.createDocumentFragment();
     const matchSet = new Set(state.matches.map((entry) => entry.address));
     const bounds = selectionBounds();
+    const covered = new Set();
+    const visibleMerges = [];
+    for (const merge of state.sheet["!merges"] || []) {
+      if (merge.s.r >= last || merge.e.r < first || merge.s.c >= state.colCount) continue;
+      visibleMerges.push(merge);
+      for (let r = Math.max(first, merge.s.r); r <= Math.min(last - 1, merge.e.r); r++)
+        for (let c = merge.s.c; c <= Math.min(state.colCount - 1, merge.e.c); c++)
+          covered.add(`${r}:${c}`);
+    }
     for (let r = first; r < last; r++) {
       const row = document.createElement("div");
       row.className = "grid-row";
@@ -560,28 +700,37 @@
       number.append(handle);
       row.append(number);
       for (let c = 0; c < state.colCount; c++) {
-        const address = `${columnName(c)}${r + 1}`;
-        const cell = state.sheet[address];
-        const element = document.createElement("div");
-        element.className = "grid-cell";
-        element.style.width = `${state.columnWidths[c]}px`;
-        element.dataset.row = String(r);
-        element.dataset.col = String(c);
-        if (cell?.t === "n") element.classList.add("is-number");
-        const fill = cellFillColor(cell);
-        if (fill) element.style.setProperty("--cell-fill", fill);
-        if (inSelection(r, c, bounds))
-          element.classList.add("selected");
-        if (state.selected.r === r && state.selected.c === c)
-          element.classList.add("selection-focus");
-        if (matchSet.has(address)) element.classList.add("search-hit");
-        element.textContent = cellText(cell);
-        element.title = cellText(cell);
+        const element = createGridCell(r, c, matchSet, bounds);
+        if (covered.has(`${r}:${c}`)) element.classList.add("merge-covered");
         row.append(element);
       }
       fragment.append(row);
     }
     elements.gridInner.append(fragment);
+    const mergeFragment = document.createDocumentFragment();
+    for (const merge of visibleMerges) {
+      const overlay = createGridCell(merge.s.r, merge.s.c, matchSet, bounds);
+      overlay.classList.add("grid-merge");
+      overlay.style.left = `${state.columnOffsets[merge.s.c]}px`;
+      overlay.style.top = `${state.rowOffsets[merge.s.r]}px`;
+      overlay.style.width = `${state.columnOffsets[Math.min(merge.e.c + 1, state.colCount)] - state.columnOffsets[merge.s.c]}px`;
+      overlay.style.height = `${state.rowOffsets[Math.min(merge.e.r + 1, state.rowCount)] - state.rowOffsets[merge.s.r]}px`;
+      mergeFragment.append(overlay);
+    }
+    elements.gridInner.append(mergeFragment);
+    for (const element of elements.gridInner.querySelectorAll(".shrink-fit:not(.merge-covered)")) {
+      const content = element.querySelector(".cell-content");
+      const computed = getComputedStyle(element);
+      const available = element.clientWidth - parseFloat(computed.paddingLeft) -
+        parseFloat(computed.paddingRight);
+      if (content.scrollWidth <= available || available <= 0) continue;
+      const ratio = Math.max(0.2, available / content.scrollWidth);
+      const align = computed.textAlign;
+      content.style.justifySelf = align === "right" ? "end" : align === "center" ? "center" : "start";
+      content.style.transformOrigin = align === "right" ? "right center" :
+        align === "center" ? "center" : "left center";
+      content.style.transform = `scaleX(${ratio})`;
+    }
   }
 
   function scheduleRender() {
@@ -681,7 +830,14 @@
     );
   }
 
+  function mergeForCell(r, c) {
+    return (state.sheet?.["!merges"] || []).find((merge) =>
+      r >= merge.s.r && r <= merge.e.r && c >= merge.s.c && c <= merge.e.c);
+  }
+
   function selectCell(r, c, scroll = true, extend = false) {
+    const merge = mergeForCell(r, c);
+    if (merge) ({ r, c } = merge.s);
     state.selected = {
       r: Math.max(0, Math.min(state.rowCount - 1, r)),
       c: Math.max(0, Math.min(state.colCount - 1, c)),
@@ -935,7 +1091,9 @@
     if (!cell) return;
     event.preventDefault();
     elements.gridViewport.focus({ preventScroll: true });
-    selectCell(cell.r, cell.c, false, event.shiftKey);
+    const merged = event.target.closest(".grid-merge");
+    selectCell(merged ? Number(merged.dataset.row) : cell.r,
+      merged ? Number(merged.dataset.col) : cell.c, false, event.shiftKey);
     selectionDragging = true;
   });
   window.addEventListener("pointermove", (event) => {
@@ -977,6 +1135,7 @@
   function finishPointerInteraction() {
     if (resizeSession?.kind === "row" && resizeSession.changed)
       scheduleRender();
+    if (resizeSession?.kind === "column") scheduleRender();
     resizeSession = null;
     selectionDragging = false;
     headerSelectionDrag = null;
@@ -998,7 +1157,12 @@
     if (moves[event.key]) {
       event.preventDefault();
       const [dr, dc] = moves[event.key];
-      selectCell(state.selected.r + dr, state.selected.c + dc, true, event.shiftKey);
+      const merge = mergeForCell(state.selected.r, state.selected.c);
+      const nextRow = merge && dr > 0 ? merge.e.r + 1 :
+        merge && dr < 0 ? merge.s.r - 1 : state.selected.r + dr;
+      const nextCol = merge && dc > 0 ? merge.e.c + 1 :
+        merge && dc < 0 ? merge.s.c - 1 : state.selected.c + dc;
+      selectCell(nextRow, nextCol, true, event.shiftKey);
     }
   });
   document.addEventListener("keydown", (event) => {

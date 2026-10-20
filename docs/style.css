@@ -730,16 +730,39 @@ body.resizing-row * {
   user-select: none !important;
 }
 .grid-cell {
-  display: block;
+  display: grid;
   padding: var(--cell-vertical-padding, 6px) var(--cell-padding, 10px);
   font-size: 13px;
   line-height: 1.4;
   color: #263b4a;
   cursor: cell;
-  background: var(--cell-fill, transparent);
+  background-color: var(--cell-fill, transparent);
+  background-image: var(--cell-overlay, none), var(--cell-diagonal-up, none), var(--cell-diagonal-down, none), var(--cell-databar, none), var(--cell-pattern, none);
   user-select: none;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.cell-content {
+  min-width: 0;
+  white-space: inherit;
+  overflow-wrap: inherit;
+}
+.cell-icon {
+  margin-right: 5px;
+  font-size: 1em;
+}
+.grid-cell.shrink-fit .cell-content {
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+}
+.grid-cell.merge-covered {
+  visibility: hidden;
+}
+.grid-merge {
+  position: absolute;
+  z-index: 2;
+  background-color: var(--cell-fill, #fff);
 }
 .grid-cell.row-measure {
   position: absolute;
@@ -749,20 +772,20 @@ body.resizing-row * {
   pointer-events: none;
 }
 .grid-cell:hover {
-  background: #f2faf8;
+  --cell-overlay: linear-gradient(#d8f5ed66, #d8f5ed66);
 }
 .grid-cell.selected {
-  background: #e9f8f4;
+  --cell-overlay: linear-gradient(#e9f8f455, #e9f8f455);
   box-shadow: inset 0 0 0 1px #86d3c4;
 }
 .grid-cell.selection-focus {
   box-shadow: inset 0 0 0 2px #22a992;
 }
 .grid-cell.search-hit {
-  background: #fff0bd;
+  --cell-overlay: linear-gradient(#fff0bdcc, #fff0bdcc);
 }
 .grid-cell.selected.search-hit {
-  background: #e9f8f4;
+  --cell-overlay: linear-gradient(#e9f8f455, #e9f8f455);
 }
 .grid-cell.is-number {
   text-align: right;

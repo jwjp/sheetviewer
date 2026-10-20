@@ -2,6 +2,11 @@
 
 **English** | [한국어](CHANGELOG.ko.md)
 
+## 0.1.14 — Spreadsheet formatting
+
+- Display common XLSX/XLSM cell formatting when a file opens, including rich text, fills, borders, alignment, merged cells, row and column sizes, and conditional formatting.
+- Preserve formatting when selecting cells and switching sheets; clear it when another file opens.
+
 ## 0.1.13 — Installed app publisher
 
 - Show Sheetview instead of github as the publisher in Windows Installed apps.

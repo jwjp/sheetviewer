@@ -63,11 +63,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $version = (Get-Content release-assets/latest.json -Raw | ConvertFrom-Json).version
+          $manifest = @(Get-ChildItem -Path 'release-assets/v*/latest.json' -File)
+          if ($manifest.Count -ne 1) { throw "Expected one release manifest; found $($manifest.Count)." }
+          $version = (Get-Content -LiteralPath $manifest[0].FullName -Raw | ConvertFrom-Json).version
           $tag = "v$version"
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists." }
-          $stage = "release-assets"
+          $stage = $manifest[0].DirectoryName
           gh release create $tag `
             "$stage/Sheetview_${version}_x64-setup.exe" `
             "$stage/Sheetview_${version}_x64-setup.exe.sig" `

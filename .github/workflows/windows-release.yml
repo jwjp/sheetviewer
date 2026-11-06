@@ -10,7 +10,7 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: windows-release
@@ -23,12 +23,14 @@ jobs:
     environment: release
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
       - name: Use current Rust toolchain
         run: rustup update stable
       - name: Build signed release
@@ -37,26 +39,35 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: ./scripts/build-release.ps1 -UseEnvironmentKey
-      - name: Save build for verification
-        if: ${{ !inputs.publish }}
+      - name: Save build
         uses: actions/upload-artifact@v4
         with:
           name: signed-windows-build
           path: .release/v*/*
           include-hidden-files: true
           if-no-files-found: error
+
+  publish:
+    needs: release
+    if: ${{ inputs.publish }}
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-windows-build
+          path: release-assets
       - name: Publish GitHub release
-        if: ${{ inputs.publish }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $config = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
-          $version = $config.version
+          $version = (Get-Content release-assets/latest.json -Raw | ConvertFrom-Json).version
           $tag = "v$version"
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists." }
-          $stage = ".release/v$version"
+          $stage = "release-assets"
           gh release create $tag `
             "$stage/Sheetview_${version}_x64-setup.exe" `
             "$stage/Sheetview_${version}_x64-setup.exe.sig" `
